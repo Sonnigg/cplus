@@ -1,26 +1,26 @@
 # DATE TABLE (YYYY-MM-DD)
-| Feature                         | Added      | Last Modified |
-|---------------------------------|------------|---------------|
-| STATUS                          | 2026-08-01 | 2026-08-01    |
-| CMPL__PTR_SIZE                  | 2026-08-03 | 2026-08-03    |
-| switch                          | 2026-08-03 | 2026-08-03    |
-| switch::precedence              | 2026-08-03 | 2026-08-03    |
-| switch::corner_cases            | 2026-08-03 | 2026-08-03    |
-| structs                         | 2026-08-03 | 2026-08-03    |
-| structs::methods                | 2026-08-03 | 2026-08-03    |
-| enums                           | 2026-08-03 | 2026-08-03    |
-| enums::variants                 | 2026-08-03 | 2026-08-03    |
-| defer                           | 2026-08-05 | 2026-08-07    |
-| defer::lowering                 | 2026-08-07 | 2026-08-07    |
-| defer::loops                    | 2026-08-07 | 2026-08-07    |
-| defer::multiple                 | 2026-08-07 | 2026-08-07    |
-| defer::goto                     | 2026-08-07 | 2026-08-07    |
-| namespace                       | 2026-08-07 | 2026-08-07    |
-| namespace::edge_cases           | 2026-08-07 | 2026-08-07    |
-| type-lowering                   | 2026-08-07 | 2026-08-07    |
-| type-lowering::bool             | 2026-08-07 | 2026-08-07    |
-| types                           | 2026-08-07 | 2026-08-07    |
-| forward-declarations            | 2026-08-14 | 2026-08-14    |
+| Feature                         | Added      | Last Modified | Status     |
+|---------------------------------|------------|---------------|------------|
+| STATUS                          | 2026-08-01 | 2026-08-01    | IN-USE     |
+| CMPL__PTR_SIZE                  | 2026-08-03 | 2026-08-03    | IN-USE     |
+| switch                          | 2026-08-03 | 2026-08-03    | IN-USE     |
+| switch::precedence              | 2026-08-03 | 2026-08-03    | IN-USE     |
+| switch::corner_cases            | 2026-08-03 | 2026-08-03    | IN-USE     |
+| structs                         | 2026-08-03 | 2026-08-03    | IN-USE     |
+| structs::methods                | 2026-08-03 | 2026-08-03    | IN-USE     |
+| enums                           | 2026-08-03 | 2026-08-03    | IN-USE     |
+| enums::variants                 | 2026-08-03 | 2026-08-03    | IN-USE     |
+| defer                           | 2026-08-05 | 2026-08-07    | IN-USE     |
+| defer::lowering                 | 2026-08-07 | 2026-08-07    | IN-USE     |
+| defer::loops                    | 2026-08-07 | 2026-08-07    | IN-USE     |
+| defer::multiple                 | 2026-08-07 | 2026-08-07    | IN-USE     |
+| defer::goto                     | 2026-08-07 | 2026-08-07    | IN-USE     |
+| namespace                       | 2026-08-07 | 2026-08-07    | IN-USE     |
+| namespace::edge_cases           | 2026-08-07 | 2026-08-07    | IN-USE     |
+| type-lowering                   | 2026-08-07 | 2026-08-07    | IN-USE     |
+| type-lowering::bool             | 2026-08-07 | 2026-08-07    | IN-USE     |
+| types                           | 2026-08-07 | 2026-08-07    | IN-USE     |
+| forward-declarations            | 2026-08-14 | 2026-08-14    | REMOVED    |
 
 # STATUS - WIP (1st August 2026)
 
@@ -525,57 +525,3 @@ std::bool1_t b1; // unsigned 8-bit  integer
     typedef ptrsize_t  size_t;  // depending on the above declared  ptrsize_t
     typedef sptrsize_t ssize_t; // depending on the above declared sptrsize_t
 ```
-
-## About C+'s forward declarations (14th August 2026)
-C+ permits all forward declarations in any and all constructs, this includes:
-
-1. namespaces
-2. structs
-
-A forward declaration is written at the top of the file below all #include by the compiler. Example below.
-
-example of forward declaration
-```cx
-#include <io>
-
-// include a C header for no reason, but for compiler testing
-#include <stdio.h>
-
-namespace myLib
-{
-    void hello();
-
-    void hello()
-    {
-        std::puts("Hello!");
-    }
-}
-
-int main()
-{
-    myLib::hello();
-    return 0;
-}
-```
-
-lowering
-```c
-// libc+/io.hp inlined here
-
-// include a C header for no reason, but for compiler testing
-#include <stdio.h>
-
-void myLib_hello();
-
-    void myLib_hello()
-    {
-        std_puts("Hello!");
-    }
-
-int main()
-{
-    myLib_hello();
-    return 0;
-}
-```
-> No further note.
