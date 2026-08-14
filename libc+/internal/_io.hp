@@ -75,7 +75,7 @@ namespace HIDDEN__STD__IO
 
     inline void flush_stdout_internal()
     {
-        flush_buffered_writer(1, get_stdout_state());
+        HIDDEN__STD__IO::flush_buffered_writer(1, HIDDEN__STD__IO::get_stdout_state());
     }
 } // namespace HIDDEN__STD__IO
 
