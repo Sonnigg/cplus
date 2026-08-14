@@ -20,6 +20,7 @@
 | type-lowering                   | 2026-08-07 | 2026-08-07    |
 | type-lowering::bool             | 2026-08-07 | 2026-08-07    |
 | types                           | 2026-08-07 | 2026-08-07    |
+| forward-declarations            | 2026-08-14 | 2026-08-14    |
 
 # STATUS - WIP (1st August 2026)
 
@@ -524,3 +525,57 @@ std::bool1_t b1; // unsigned 8-bit  integer
     typedef ptrsize_t  size_t;  // depending on the above declared  ptrsize_t
     typedef sptrsize_t ssize_t; // depending on the above declared sptrsize_t
 ```
+
+## About C+'s forward declarations (14th August 2026)
+C+ permits all forward declarations in any and all constructs, this includes:
+
+1. namespaces
+2. structs
+
+A forward declaration is written at the top of the file below all #include by the compiler. Example below.
+
+example of forward declaration
+```cx
+#include <io>
+
+// include a C header for no reason, but for compiler testing
+#include <stdio.h>
+
+namespace myLib
+{
+    void hello();
+
+    void hello()
+    {
+        std::puts("Hello!");
+    }
+}
+
+int main()
+{
+    myLib::hello();
+    return 0;
+}
+```
+
+lowering
+```c
+// libc+/io.hp inlined here
+
+// include a C header for no reason, but for compiler testing
+#include <stdio.h>
+
+void myLib_hello();
+
+    void myLib_hello()
+    {
+        std_puts("Hello!");
+    }
+
+int main()
+{
+    myLib_hello();
+    return 0;
+}
+```
+> No further note.
