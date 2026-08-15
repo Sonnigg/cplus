@@ -1,7 +1,7 @@
 # DATE TABLE (YYYY-MM-DD)
 | Feature                         | Added      | Last Modified | Status                         |
 |---------------------------------|------------|---------------|--------------------------------|
-| STATUS                          | 2026-08-01 | 2026-08-01    | IN-USE                         |
+| STATUS                          | 2026-08-01 | 2026-08-15    | IN-USE                         |
 | CMPL__PTR_SIZE                  | 2026-08-03 | 2026-08-03    | IN-USE                         |
 | switch                          | 2026-08-03 | 2026-08-03    | IN-USE                         |
 | switch::precedence              | 2026-08-03 | 2026-08-03    | IN-USE                         |
@@ -22,7 +22,7 @@
 | types                           | 2026-08-07 | 2026-08-07    | IN-USE                         |
 | forward-declarations            | 2026-08-14 | 2026-08-15    | IN-USE (previously REMOVED)    |
 
-# STATUS - WIP (1st August 2026)
+# STATUS - C+26-08-15 standard (1st August 2026)
 
 # Information regarding "(DATE)" (3rd August 2026)
 Every header (#, ##, and ###) in the Markdown documentation has the date of its last modification appended in parentheses.
