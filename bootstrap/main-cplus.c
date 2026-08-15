@@ -307,14 +307,20 @@ static void usage(void)
 static void version(void)
 {
     char cplus_version[32] = "unknown";
+    char libcplus_version[32] = "unknown";
     char tcc_version[32] = "unknown";
     char *manifest = read_file("manifest.json");
+    char *manifest2 = read_file("libc+/manifest.json");
     if (manifest) {
         extract_json_value(manifest, "version", cplus_version, sizeof(cplus_version));
         extract_nested_dependency_version(manifest, "tcc", tcc_version, sizeof(tcc_version));
         free(manifest);
     }
-    printf("C+ version:\n  %s\nTCC version:\n  %s\n", cplus_version, tcc_version);
+    if (manifest2) {
+        extract_json_value(manifest2, "version", libcplus_version, sizeof(libcplus_version));
+        free(manifest2);
+    }
+    printf("C+ version:\n  %s\nlibc+ version:\n  %s\nTinyCC version:\n  %s\n", cplus_version, libcplus_version, tcc_version);
 }
 
 static char *generated_name(const char *in)
