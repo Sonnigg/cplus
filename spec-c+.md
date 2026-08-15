@@ -527,4 +527,4 @@ std::bool1_t b1; // unsigned 8-bit  integer
 ```
 
 ## About C+'s forward declarations (14th and 15th August 2026)
-Forward declarations in C+ are considered undefined behaviour as they are compiler-dependent. The original C+ Compiler (c+, cc+, cplus) by `Ben Samberg` (alias `Sonnigg`) does not declare forward declarations to be usable everywhere. Generally speaking though, forward declarations are always undefined behaviour and depend on the used C+ compiler as-to how they are handled and lowered into C or other targets.
+Forward declarations in C+ are considered undefined behaviour as they are compiler-dependent. The original C+ Compiler (c+, cc+, cplus) by `Ben Samberg` (alias `Sonnigg`) does not declare forward declarations to be usable everywhere. Generally speaking though, C+ does not standardize forward declarations and instead depends on the used C+ compiler as-to how they are handled and lowered into C or other targets.
