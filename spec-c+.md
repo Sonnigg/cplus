@@ -1,26 +1,26 @@
 # DATE TABLE (YYYY-MM-DD)
-| Feature                         | Added      | Last Modified | Status     |
-|---------------------------------|------------|---------------|------------|
-| STATUS                          | 2026-08-01 | 2026-08-01    | IN-USE     |
-| CMPL__PTR_SIZE                  | 2026-08-03 | 2026-08-03    | IN-USE     |
-| switch                          | 2026-08-03 | 2026-08-03    | IN-USE     |
-| switch::precedence              | 2026-08-03 | 2026-08-03    | IN-USE     |
-| switch::corner_cases            | 2026-08-03 | 2026-08-03    | IN-USE     |
-| structs                         | 2026-08-03 | 2026-08-03    | IN-USE     |
-| structs::methods                | 2026-08-03 | 2026-08-03    | IN-USE     |
-| enums                           | 2026-08-03 | 2026-08-03    | IN-USE     |
-| enums::variants                 | 2026-08-03 | 2026-08-03    | IN-USE     |
-| defer                           | 2026-08-05 | 2026-08-07    | IN-USE     |
-| defer::lowering                 | 2026-08-07 | 2026-08-07    | IN-USE     |
-| defer::loops                    | 2026-08-07 | 2026-08-07    | IN-USE     |
-| defer::multiple                 | 2026-08-07 | 2026-08-07    | IN-USE     |
-| defer::goto                     | 2026-08-07 | 2026-08-07    | IN-USE     |
-| namespace                       | 2026-08-07 | 2026-08-07    | IN-USE     |
-| namespace::edge_cases           | 2026-08-07 | 2026-08-07    | IN-USE     |
-| type-lowering                   | 2026-08-07 | 2026-08-07    | IN-USE     |
-| type-lowering::bool             | 2026-08-07 | 2026-08-07    | IN-USE     |
-| types                           | 2026-08-07 | 2026-08-07    | IN-USE     |
-| forward-declarations            | 2026-08-14 | 2026-08-14    | REMOVED    |
+| Feature                         | Added      | Last Modified | Status                         |
+|---------------------------------|------------|---------------|--------------------------------|
+| STATUS                          | 2026-08-01 | 2026-08-01    | IN-USE                         |
+| CMPL__PTR_SIZE                  | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| switch                          | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| switch::precedence              | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| switch::corner_cases            | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| structs                         | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| structs::methods                | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| enums                           | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| enums::variants                 | 2026-08-03 | 2026-08-03    | IN-USE                         |
+| defer                           | 2026-08-05 | 2026-08-07    | IN-USE                         |
+| defer::lowering                 | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| defer::loops                    | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| defer::multiple                 | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| defer::goto                     | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| namespace                       | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| namespace::edge_cases           | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| type-lowering                   | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| type-lowering::bool             | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| types                           | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| forward-declarations            | 2026-08-14 | 2026-08-15    | IN-USE (previously REMOVED)    |
 
 # STATUS - WIP (1st August 2026)
 
@@ -525,3 +525,6 @@ std::bool1_t b1; // unsigned 8-bit  integer
     typedef ptrsize_t  size_t;  // depending on the above declared  ptrsize_t
     typedef sptrsize_t ssize_t; // depending on the above declared sptrsize_t
 ```
+
+## About C+'s forward declarations (14th and 15th August 2026)
+Forward declarations in C+ are considered undefined behaviour as they are compiler-dependent. The original C+ Compiler (c+, cc+, cplus) by `Ben Samberg` (alias `Sonnigg`) does not declare forward declarations to be usable everywhere. Generally speaking though, forward declarations are always undefined behaviour and depend on the used C+ compiler as-to how they are handled and lowered into C or other targets.
