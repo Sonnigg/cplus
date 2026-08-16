@@ -2,15 +2,20 @@
 #include "lexer.h"
 #include "transpiler.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#include <sys/wait.h>
-#include <time.h>
-#include <dirent.h>
-#include <fnmatch.h>
-#include <sys/stat.h>
+#if defined(_WIN32)
+    #include <windows.h>
+    #include <direct.h>
+    #include <io.h>
+    #define getcwd _getcwd
+    #define access _access
+    #define F_OK 0
+#elif defined(__linux__)
+    #include <unistd.h>
+    #include <sys/wait.h>
+    #include <time.h>
+    #include <dirent.h>
+    #include <fnmatch.h>
+    #include <sys/stat.h>
 #endif
 
 bool ALLOW_WARNINGS = true;
@@ -304,23 +309,297 @@ static void usage(void)
     );
 }
 
+static char *path_last_separator(char *path)
+{
+    char *slash = strrchr(path, '/');
+
+#if defined(_WIN32)
+    char *backslash = strrchr(path, '\\');
+
+    if (!slash || (backslash && backslash > slash))
+        slash = backslash;
+#endif
+
+    return slash;
+}
+
+
+static int find_project_root(char *buf, size_t size)
+{
+    /*
+     * First try to locate the actual executable.
+     *
+     * This makes the result completely independent of the CWD.
+     */
+#if defined(_WIN32)
+
+    DWORD len = GetModuleFileNameA(NULL, buf, (DWORD)size);
+
+    if (len == 0 || len >= size)
+        goto cwd_fallback;
+
+    /*
+     * buf:
+     *
+     *   C:\...\cplus\bin\cplus.exe
+     *
+     * Remove executable.
+     */
+    char *sep = path_last_separator(buf);
+
+    if (!sep)
+        goto cwd_fallback;
+
+    *sep = '\0';
+
+    /*
+     * Remove "bin".
+     *
+     *   C:\...\cplus\bin
+     *              ^^^
+     */
+    sep = path_last_separator(buf);
+
+    if (!sep)
+        goto cwd_fallback;
+
+    *sep = '\0';
+
+    /*
+     * Now buf should be:
+     *
+     *   C:\...\cplus
+     *
+     * Verify that this actually looks like the C+ project.
+     */
+    char manifest[1024];
+
+    snprintf(
+        manifest,
+        sizeof(manifest),
+        "%s\\manifest.json",
+        buf
+    );
+
+    if (access(manifest, F_OK) == 0)
+        return 0;
+
+#else
+
+    /*
+     * Linux / Unix:
+     *
+     * /proc/self/exe gives us the actual executable.
+     */
+    ssize_t len = readlink("/proc/self/exe", buf, size - 1);
+
+    if (len <= 0 || (size_t)len >= size)
+        goto cwd_fallback;
+
+    buf[len] = '\0';
+
+    char *sep = path_last_separator(buf);
+
+    if (!sep)
+        goto cwd_fallback;
+
+    *sep = '\0';
+
+    /*
+     * Remove "bin".
+     */
+    sep = path_last_separator(buf);
+
+    if (!sep)
+        goto cwd_fallback;
+
+    *sep = '\0';
+
+    char manifest[1024];
+
+    snprintf(
+        manifest,
+        sizeof(manifest),
+        "%s/manifest.json",
+        buf
+    );
+
+    if (access(manifest, F_OK) == 0)
+        return 0;
+
+#endif
+
+
+cwd_fallback:
+
+    /*
+     * If the executable-path approach failed, fall back to
+     * walking upward from the current working directory.
+     */
+    if (!getcwd(buf, size))
+        return -1;
+
+    while (1)
+    {
+        char manifest[1024];
+
+#if defined(_WIN32)
+        snprintf(
+            manifest,
+            sizeof(manifest),
+            "%s\\manifest.json",
+            buf
+        );
+#else
+        snprintf(
+            manifest,
+            sizeof(manifest),
+            "%s/manifest.json",
+            buf
+        );
+#endif
+
+        if (access(manifest, F_OK) == 0)
+            return 0;
+
+        char *sep = path_last_separator(buf);
+
+        if (!sep)
+            break;
+
+#if defined(_WIN32)
+
+        /*
+         * Don't walk above C:\.
+         */
+        if (sep == buf + 2 &&
+            buf[1] == ':')
+        {
+            break;
+        }
+
+#else
+
+        /*
+         * Don't walk above /.
+         */
+        if (sep == buf)
+            break;
+
+#endif
+
+        *sep = '\0';
+    }
+
+    return -1;
+}
+
+
 static void version(void)
 {
     char cplus_version[32] = "unknown";
     char libcplus_version[32] = "unknown";
     char tcc_version[32] = "unknown";
-    char *manifest = read_file("manifest.json");
-    char *manifest2 = read_file("libc+/manifest.json");
-    if (manifest) {
-        extract_json_value(manifest, "version", cplus_version, sizeof(cplus_version));
-        extract_nested_dependency_version(manifest, "tcc", tcc_version, sizeof(tcc_version));
+
+    char root_dir[1024];
+    char path1[1150];
+    char path2[1150];
+
+    if (find_project_root(root_dir, sizeof(root_dir)) == 0)
+    {
+#if defined(_WIN32)
+
+        snprintf(
+            path1,
+            sizeof(path1),
+            "%s\\manifest.json",
+            root_dir
+        );
+
+        snprintf(
+            path2,
+            sizeof(path2),
+            "%s\\libc+\\manifest.json",
+            root_dir
+        );
+
+#else
+
+        snprintf(
+            path1,
+            sizeof(path1),
+            "%s/manifest.json",
+            root_dir
+        );
+
+        snprintf(
+            path2,
+            sizeof(path2),
+            "%s/libc+/manifest.json",
+            root_dir
+        );
+
+#endif
+    }
+    else
+    {
+        /*
+         * Last resort.
+         */
+#if defined(_WIN32)
+        snprintf(path1, sizeof(path1), "cplus\\manifest.json");
+        snprintf(path2, sizeof(path2), "cplus\\libc+\\manifest.json");
+#else
+        snprintf(path1, sizeof(path1), "cplus/manifest.json");
+        snprintf(path2, sizeof(path2), "cplus/libc+/manifest.json");
+#endif
+    }
+
+    char *manifest = read_file(path1);
+    char *manifest2 = read_file(path2);
+
+    if (manifest)
+    {
+        extract_json_value(
+            manifest,
+            "version",
+            cplus_version,
+            sizeof(cplus_version)
+        );
+
+        extract_nested_dependency_version(
+            manifest,
+            "tcc",
+            tcc_version,
+            sizeof(tcc_version)
+        );
+
         free(manifest);
     }
-    if (manifest2) {
-        extract_json_value(manifest2, "version", libcplus_version, sizeof(libcplus_version));
+
+    if (manifest2)
+    {
+        extract_json_value(
+            manifest2,
+            "version",
+            libcplus_version,
+            sizeof(libcplus_version)
+        );
+
         free(manifest2);
     }
-    printf("C+ version:\n  %s\nlibc+ version:\n  %s\nTinyCC version:\n  %s\n", cplus_version, libcplus_version, tcc_version);
+
+    printf(
+        "C+ version:\n"
+        "  %s\n"
+        "libc+ version:\n"
+        "  %s\n"
+        "TinyCC version:\n"
+        "  %s\n",
+        cplus_version,
+        libcplus_version,
+        tcc_version
+    );
 }
 
 static char *generated_name(const char *in)
