@@ -278,37 +278,6 @@ static bool extract_nested_dependency_version(const char *json, const char *dep_
 
 /* --- CLI & HELPERS --- */
 
-static void usage(void)
-{
-    char cplus_version[32] = "unknown";
-    char *manifest = read_file("manifest.json");
-    if (manifest) {
-        extract_json_value(manifest, "version", cplus_version, sizeof(cplus_version));
-        free(manifest);
-    }
-    printf(
-        "C+ compiler (v%s)\n\n"
-        "Version:\n  %s\n"
-        "Extensions:\n  .cp\n  .c+\n  .hp\n  .h+\n\n"
-        "Usage:\n"
-        "  c+    [options] file.('cp'|'c+') [...files]\n"
-        "  cc+   [options] file.('cp'|'c+') [...files]\n"
-        "  cplus [options] file.('cp'|'c+') [...files]\n\n"
-        "  Options:\n"
-        "  -v, --version Outputs the installed C+ version and exits\n"
-        "  -h, --help    Outputs this message and exits\n"
-        "  -o <file>     Output executable or file\n"
-        "  -c            Compile to an object file\n"
-        "  -C            Emit generated C only and exit\n"
-        "  -D <macro>    Define preprocessor macro (forwarded to TCC)\n"
-        "  -I <dir>      Add include directory (forwarded to TCC)\n"
-        "  --keep-c      Keep generated .gencx.c file\n"
-        "  --index       Emit token index for IDE highlighting services\n"
-        "  --            Stop processing C+ options\n",
-        cplus_version, cplus_version
-    );
-}
-
 static char *path_last_separator(char *path)
 {
     char *slash = strrchr(path, '/');
@@ -599,6 +568,101 @@ static void version(void)
         cplus_version,
         libcplus_version,
         tcc_version
+    );
+}
+
+static int versionCPlus(char *buf, size_t size)
+{
+    if (!buf || size == 0)
+        return -1;
+
+    snprintf(buf, size, "unknown");
+
+    char root_dir[1024];
+    char manifest_path[1150];
+
+    if (find_project_root(root_dir, sizeof(root_dir)) == 0)
+    {
+#if defined(_WIN32)
+        snprintf(
+            manifest_path,
+            sizeof(manifest_path),
+            "%s\\manifest.json",
+            root_dir
+        );
+#else
+        snprintf(
+            manifest_path,
+            sizeof(manifest_path),
+            "%s/manifest.json",
+            root_dir
+        );
+#endif
+    }
+    else
+    {
+#if defined(_WIN32)
+        snprintf(
+            manifest_path,
+            sizeof(manifest_path),
+            "cplus\\manifest.json"
+        );
+#else
+        snprintf(
+            manifest_path,
+            sizeof(manifest_path),
+            "cplus/manifest.json"
+        );
+#endif
+    }
+
+    char *manifest = read_file(manifest_path);
+
+    if (manifest)
+    {
+        extract_json_value(
+            manifest,
+            "version",
+            buf,
+            size
+        );
+
+        free(manifest);
+    }
+
+    return 0;
+}
+
+static void usage(void)
+{
+    char cplus_version[32];
+
+    versionCPlus(
+        cplus_version,
+        sizeof(cplus_version)
+    );
+
+    printf(
+        "C+ compiler (v%s)\n\n"
+        "Version:\n  %s\n"
+        "Extensions:\n  .cp\n  .c+\n  .hp\n  .h+\n\n"
+        "Usage:\n"
+        "  c+    [options] file.('cp'|'c+') [...files]\n"
+        "  cc+   [options] file.('cp'|'c+') [...files]\n"
+        "  cplus [options] file.('cp'|'c+') [...files]\n\n"
+        "  Options:\n"
+        "  -v, --version Outputs the installed C+ version and exits\n"
+        "  -h, --help    Outputs this message and exits\n"
+        "  -o <file>     Output executable or file\n"
+        "  -c            Compile to an object file\n"
+        "  -C            Emit generated C only and exit\n"
+        "  -D <macro>    Define preprocessor macro (forwarded to TCC)\n"
+        "  -I <dir>      Add include directory (forwarded to TCC)\n"
+        "  --keep-c      Keep generated .gencx.c file\n"
+        "  --index       Emit token index for IDE highlighting services\n"
+        "  --            Stop processing C+ options\n",
+        cplus_version,
+        cplus_version
     );
 }
 
