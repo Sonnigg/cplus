@@ -660,7 +660,7 @@ static void usage(void)
         "  -I <dir>      Add include directory (forwarded to TCC)\n"
         "  -shared       Create a shared library/dll (forwarded to TCC)\n"
         "  -ar <lib>     Create a static library (forwarded to TCC)\n"
-        "  -impdef <lib> Create a def file for the dynamic library (forwarded to TCC)"
+        "  -impdef <lib> Create a def file for the dynamic library (forwarded to TCC)\n"
         "  -nostdlib     Do not link with standard CRT and libraries (forwarded to TCC)\n"
         "  -nostdinc     Do not use standard system include paths (forwarded to TCC)\n"
         "  -m32/64       Defer to i386/x86_64 (x86/x64) cross compiler (forwarded to TCC)\n"
