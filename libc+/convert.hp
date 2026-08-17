@@ -5,6 +5,7 @@
 
 #include <types>
 #include <chars>
+#include <string>
 
 namespace std
 {

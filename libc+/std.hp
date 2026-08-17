@@ -1,7 +1,9 @@
 #include <internal/_utilities.hp>
 #include <internal/_io.hp>
+#include <internal/_time.hp>
 
 #include <chars>
+#include <convert>
 #include <io>
 #include <libc+>
 #include <limits>
