@@ -16,6 +16,7 @@ Currently, C+ provides pre-built compiler packages for:
 - [Linux ARM64 and aarch64](./arm-arch/)
 
 Windows ARM64 is currently not supported.
+> Do note that those pre-built compiler packages are for TinyCC and not the C+ Compiler itself.
 
 ## What is C+?
 Simply put, **C+ started as my C++ dialect, but grew into its own language**. It gives a lot of functionality beyond C's simple structs, as it introduces proper namespaces, scoped enums, and better structs that can actually have methods with the lowering being C-like (more on that below).
