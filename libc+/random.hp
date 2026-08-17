@@ -1,0 +1,122 @@
+#ifndef _RANDOM_HP
+#define _RANDOM_HP
+#include <types>
+namespace std {
+    struct Random {
+        std::uint32_t __state;
+
+        /*
+         * Creates a new pseudo-random generator from a seed.
+         *
+         * A seed of 0 is replaced with a non-zero constant because
+         * xorshift32 has a zero-locking state.
+         */
+        static Random new(std::uint32_t seed) {
+            if (!seed) seed = 0x9E3779B9;
+            return Random {
+                __state: seed,
+            };
+        }
+        
+        /*
+         * Generates the next 32-bit pseudo-random value.
+         *
+         * Uses xorshift32:
+         * x ^= x << 13
+         * x ^= x >> 17
+         * x ^= x << 5
+         */
+        std::uint32_t next(Random *self) {
+            if (!self) return 0;
+            std::uint32_t x = self->__state;
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            self->__state = x;
+            return x;
+        }
+        /*
+         * Generates a pseudo-random unsigned integer in [min, max].
+         */
+        std::uint32_t nextUInt(
+            Random *self,
+            std::uint32_t min,
+            std::uint32_t max
+        ) {
+            if (!self || min > max) return 0;
+            std::uint32_t range = max - min + 1;
+            if (range == 0) return self->next();
+            return min + (self->next() % range);
+        }
+        
+        /*
+         * Generates a pseudo-random signed integer in [min, max].
+         */
+        std::int32_t nextInt(
+            Random *self,
+            std::int32_t min,
+            std::int32_t max
+        ) {
+            if (!self || min > max) return 0;
+            std::uint32_t range = static_cast<std::int32_t>(max) - static_cast<std::int32_t>(min) + 1;
+            if (range == 0) return static_cast<std::int32_t>(self->next());
+            return min + static_cast<std::int32_t>(self->next() % range);
+        }
+        
+        /*
+         * Generates a pseudo-random boolean.
+         */
+        bool nextBool(Random *self) {
+            if (!self) return false;
+            return (self->next() & 1) != 0;
+        }
+        
+        /*
+         * Generates a pseudo-random float in [0, 1).
+         */ 
+        float nextFloat(Random *self) {
+            if (!self) return 0.0;
+            return static_cast<float>(self->next()) / 4294967296.0;
+        }
+        
+        /*
+         * Generates a pseudo-random double in [0, 1).
+         */ 
+        double nextDouble(Random *self) {
+            if (!self) return 0.0;
+            return static_cast<double>(self->next()) / 4294967296.0;
+        } 
+        
+        /* 
+         * Generates a pseudo-random floating-point value in [min, max).
+         */ 
+        double nextDoubleRange(
+            Random *self,
+            double min,
+            double max
+        ) {
+            if (!self || min > max) return 0.0;
+            return min + self->nextDouble() * (max - min); 
+        }
+        
+        /*
+         * Resets the generator to a new seed.
+         */
+         
+        void seed(Random *self, std::uint32_t value) {
+            if (!self) return;
+            if (!value) value = 0x9E3779B9;
+            self->__state = value;
+        }
+        
+        /*
+         * Returns the generator's current internal state.
+         */
+        
+        std::uint32_t state(const Random *const self) {
+            if (!self) return 0;
+            return self->__state;
+        }
+    } // struct Random
+} // namespace std
+#endif // _RANDOM_HP

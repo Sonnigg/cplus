@@ -1,0 +1,236 @@
+
+// _time.hp
+//
+// Internal platform-specific time implementation.
+//
+// This header intentionally does NOT depend on <time>.
+// The public <time> header converts __TimeValue into std::Time.
+
+#ifndef _INTERNAL_TIME_HP
+#define _INTERNAL_TIME_HP
+
+#include <types>
+
+namespace HIDDEN__STD__TIME
+{
+    struct TimeValue
+    {
+        std::int64_t seconds;
+        std::int64_t nanoseconds;
+    };
+
+
+#if defined(_WIN32) || defined(_WIN64)
+
+    #include <windows.h>
+
+
+    /*
+        Windows wall-clock time.
+
+        FILETIME represents 100-nanosecond intervals since
+        1601-01-01 UTC.
+
+        Unix time begins at 1970-01-01 UTC, which is
+        11644473600 seconds after the FILETIME epoch.
+    */
+    TimeValue now()
+    {
+        FILETIME fileTime;
+
+        #if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0602
+            GetSystemTimePreciseAsFileTime(&fileTime);
+        #else
+            GetSystemTimeAsFileTime(&fileTime);
+        #endif
+
+        ULARGE_INTEGER value;
+        value.LowPart  = fileTime.dwLowDateTime;
+        value.HighPart = fileTime.dwHighDateTime;
+
+        std::uint64_t intervals = value.QuadPart;
+
+        std::uint64_t unixIntervals =
+            intervals - 116444736000000000ULL;
+
+        TimeValue result;
+
+        result.seconds =
+            static_cast<std::int64_t>(
+                unixIntervals / 10000000ULL
+            );
+
+        result.nanoseconds =
+            static_cast<std::int64_t>(
+                (unixIntervals % 10000000ULL) * 100ULL
+            );
+
+        return result;
+    }
+
+
+    /*
+        Windows monotonic clock.
+
+        QueryPerformanceCounter is independent of changes
+        to the system wall clock.
+    */
+    TimeValue monotonic()
+    {
+        static LARGE_INTEGER frequency = { 0 };
+        static bool initialized = false;
+
+        if (!initialized)
+        {
+            QueryPerformanceFrequency(&frequency);
+            initialized = true;
+        }
+
+        LARGE_INTEGER counter;
+        QueryPerformanceCounter(&counter);
+
+        std::int64_t seconds =
+            counter.QuadPart / frequency.QuadPart;
+
+        std::int64_t remainder =
+            counter.QuadPart % frequency.QuadPart;
+
+        std::int64_t nanoseconds =
+            static_cast<std::int64_t>(
+                (remainder * 1000000000LL) /
+                frequency.QuadPart
+            );
+
+        return TimeValue {
+            seconds: seconds,
+            nanoseconds: nanoseconds,
+        };
+    }
+
+
+    /*
+        Sleeps using the Windows Sleep API.
+
+        Windows Sleep operates in milliseconds, so
+        sub-millisecond precision cannot be guaranteed.
+    */
+    void sleep(
+        std::int64_t seconds,
+        std::int64_t nanoseconds
+    )
+    {
+        if (seconds < 0)
+            return;
+
+        if (nanoseconds < 0)
+            return;
+
+        std::uint64_t milliseconds =
+            static_cast<std::uint64_t>(seconds) * 1000ULL;
+
+        milliseconds +=
+            static_cast<std::uint64_t>(nanoseconds) / 1000000ULL;
+
+        /*
+            Sleep takes a DWORD. Avoid overflowing it by
+            sleeping in multiple chunks.
+        */
+        while (milliseconds > 0)
+        {
+            DWORD chunk;
+
+            if (milliseconds > 4294967294ULL)
+                chunk = 4294967294UL;
+            else
+                chunk = static_cast<DWORD>(milliseconds);
+
+            Sleep(chunk);
+
+            milliseconds -= chunk;
+        }
+    }
+
+
+#else
+
+    /*
+        POSIX implementation.
+
+        TinyCC provides the standard POSIX headers when
+        compiling against a POSIX system libc.
+    */
+    #include <time.h>
+
+
+    TimeValue now()
+    {
+        struct timespec value;
+
+        if (clock_gettime(CLOCK_REALTIME, &value) != 0)
+        {
+            return TimeValue {
+                seconds: 0,
+                nanoseconds: 0,
+            };
+        }
+
+        return TimeValue {
+            seconds: static_cast<std::int64_t>(value.tv_sec),
+            nanoseconds: static_cast<std::int64_t>(value.tv_nsec),
+        };
+    }
+
+
+    TimeValue monotonic()
+    {
+        struct timespec value;
+
+        if (clock_gettime(CLOCK_MONOTONIC, &value) != 0)
+        {
+            return TimeValue {
+                seconds: 0,
+                nanoseconds: 0,
+            };
+        }
+
+        return TimeValue {
+            seconds: static_cast<std::int64_t>(value.tv_sec),
+            nanoseconds: static_cast<std::int64_t>(value.tv_nsec),
+        };
+    }
+
+
+    void sleep(
+        std::int64_t seconds,
+        std::int64_t nanoseconds
+    )
+    {
+        if (seconds < 0)
+            return;
+
+        if (nanoseconds < 0)
+            return;
+
+        struct timespec requested;
+
+        requested.tv_sec =
+            static_cast<time_t>(seconds);
+
+        requested.tv_nsec =
+            static_cast<long>(nanoseconds);
+
+        /*
+            nanosleep may return early when interrupted.
+            Continue sleeping for the remaining duration.
+        */
+        while (nanosleep(&requested, &requested) != 0)
+        {
+            // Continue with the remaining requested time.
+        }
+    }
+
+#endif
+
+} // namespace HIDDEN__STD__TIME
+
+#endif // _INTERNAL_TIME_HP

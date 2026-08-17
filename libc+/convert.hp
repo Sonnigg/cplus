@@ -1,0 +1,156 @@
+// convert.hp
+
+#ifndef _CONVERT_HP
+#define _CONVERT_HP
+
+#include <types>
+#include <chars>
+
+namespace std
+{
+    /*
+        Parses an unsigned decimal integer.
+
+        Valid:
+            "0"
+            "123"
+            "4294967295"
+
+        Invalid:
+            ""
+            "12a3"
+            "-123"
+
+        Returns 0 on invalid input.
+    */
+    std::uint64_t parseUInt(const char *const string)
+    {
+        if (!string || !string[0])
+            return 0;
+
+        std::uint64_t result = 0;
+
+        for (std::size_t i = 0; string[i]; i++)
+        {
+            if (!std::isDigit(string[i]))
+                return 0;
+
+            std::uint64_t digit =
+                static_cast<std::uint64_t>(string[i] - '0');
+
+            result = result * 10 + digit;
+        }
+
+        return result;
+    }
+
+    /*
+        Parses a signed decimal integer.
+
+        Valid:
+            "0"
+            "123"
+            "-123"
+
+        Invalid:
+            ""
+            "12a3"
+            "--123"
+
+        Returns 0 on invalid input.
+    */
+    std::int64_t parseInt(const char *const string)
+    {
+        if (!string || !string[0])
+            return 0;
+
+        std::size_t i = 0;
+        bool negative = false;
+
+        if (string[0] == '-')
+        {
+            negative = true;
+            i = 1;
+
+            if (!string[i])
+                return 0;
+        }
+
+        std::int64_t result = 0;
+
+        for (; string[i]; i++)
+        {
+            if (!std::isDigit(string[i]))
+                return 0;
+
+            std::int64_t digit =
+                static_cast<std::int64_t>(string[i] - '0');
+
+            result = result * 10 + digit;
+        }
+
+        if (negative)
+            result = -result;
+
+        return result;
+    }
+
+    /*
+        Converts an unsigned integer into a decimal String.
+    */
+    std::String uintToString(std::uint64_t value)
+    {
+        char buffer[21];
+
+        std::size_t i = 20;
+        buffer[i] = '\0';
+
+        do
+        {
+            buffer[--i] =
+                static_cast<char>('0' + (value % 10));
+
+            value /= 10;
+        }
+        while (value);
+
+        return std::String::fromChars(buffer + i);
+    }
+
+    /*
+        Converts a signed integer into a decimal String.
+    */
+    std::String intToString(std::int64_t value)
+    {
+        if (value >= 0)
+            return std::uintToString(
+                static_cast<std::uint64_t>(value)
+            );
+
+        /*
+            Avoids overflowing when value is INT64_MIN.
+        */
+        std::uint64_t magnitude =
+            static_cast<std::uint64_t>(-(value + 1)) + 1;
+
+        char buffer[22];
+
+        std::size_t i = 21;
+        buffer[i] = '\0';
+
+        do
+        {
+            buffer[--i] =
+                static_cast<char>('0' + (magnitude % 10));
+
+            magnitude /= 10;
+        }
+        while (magnitude);
+
+        buffer[--i] = '-';
+
+        return std::String::fromChars(buffer + i);
+    }
+} // namespace std
+
+#endif // _CONVERT_HP

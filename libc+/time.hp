@@ -1,0 +1,186 @@
+// time.hp
+
+#ifndef _TIME_HP
+#define _TIME_HP
+
+#include <types>
+#include <internal/_time>
+
+namespace std
+{
+    /*
+        Time units
+    */
+    struct Time
+    {
+        std::int64_t seconds;
+        std::int64_t nanoseconds;
+
+        static Time fromSeconds(std::int64_t seconds)
+        {
+            return Time {
+                seconds: seconds,
+                nanoseconds: 0,
+            };
+        }
+
+        static Time fromMilliseconds(std::int64_t milliseconds)
+        {
+            return Time {
+                seconds: milliseconds / 1000,
+                nanoseconds: (milliseconds % 1000) * 1000000,
+            };
+        }
+
+        static Time fromMicroseconds(std::int64_t microseconds)
+        {
+            return Time {
+                seconds: microseconds / 1000000,
+                nanoseconds: (microseconds % 1000000) * 1000,
+            };
+        }
+
+        static Time fromNanoseconds(std::int64_t nanoseconds)
+        {
+            return Time {
+                seconds: nanoseconds / 1000000000,
+                nanoseconds: nanoseconds % 1000000000,
+            };
+        }
+
+        std::int64_t totalSeconds(const Time *const self)
+        {
+            if (!self)
+                return 0;
+
+            return self->seconds;
+        }
+
+        std::int64_t totalMilliseconds(const Time *const self)
+        {
+            if (!self)
+                return 0;
+
+            return self->seconds * 1000
+                + self->nanoseconds / 1000000;
+        }
+
+        std::int64_t totalMicroseconds(const Time *const self)
+        {
+            if (!self)
+                return 0;
+
+            return self->seconds * 1000000
+                + self->nanoseconds / 1000;
+        }
+
+        std::int64_t totalNanoseconds(const Time *const self)
+        {
+            if (!self)
+                return 0;
+
+            return self->seconds * 1000000000
+                + self->nanoseconds;
+        }
+    } // struct Time
+
+    namespace time {
+        /*
+            Returns the current wall-clock time as
+            seconds and nanoseconds since the Unix epoch.
+        */
+        std::Time now()
+        {
+            return static_cast<std::Time>(HIDDEN__STD__TIME::now());
+        }
+
+
+        /*
+            Returns a monotonic timestamp.
+
+            This should be used for measuring elapsed time,
+            not for obtaining calendar time.
+        */
+        std::Time monotonic()
+        {
+            return static_cast<std::Time>(HIDDEN__STD__TIME::monotonic());
+        }
+
+
+        /*
+            Sleeps for the specified amount of time.
+        */
+        void sleep(std::Time duration)
+        {
+            HIDDEN__STD__TIME::sleep(
+                duration.seconds,
+                duration.nanoseconds
+            );
+        }
+
+
+        /*
+            Convenience sleep functions.
+        */
+        void sleepSeconds(std::int64_t seconds)
+        {
+            std::time::sleep(
+                std::Time::fromSeconds(seconds)
+            );
+        }
+
+        void sleepMilliseconds(std::int64_t milliseconds)
+        {
+            std::time::sleep(
+                std::Time::fromMilliseconds(milliseconds)
+            );
+        }
+
+        void sleepMicroseconds(std::int64_t microseconds)
+        {
+            std::time::sleep(
+                std::Time::fromMicroseconds(microseconds)
+            );
+        }
+
+        void sleepNanoseconds(std::int64_t nanoseconds)
+        {
+            std::time::sleep(
+                std::Time::fromNanoseconds(nanoseconds)
+            );
+        }
+
+
+        /*
+            Returns the elapsed time between two timestamps.
+
+            Intended primarily for monotonic timestamps.
+        */
+        std::Time elapsed(
+            const std::Time *const start,
+            const std::Time *const end
+        )
+        {
+            if (!start || !end)
+                return std::Time {
+                    seconds: 0,
+                    nanoseconds: 0,
+                };
+
+            std::Time result = *end;
+
+            result.seconds -= start->seconds;
+            result.nanoseconds -= start->nanoseconds;
+
+            if (result.nanoseconds < 0)
+            {
+                result.seconds--;
+                result.nanoseconds += 1000000000;
+            }
+
+            return result;
+        }
+    } // namespace time
+} // namespace std
+
+#endif // _TIME_HP

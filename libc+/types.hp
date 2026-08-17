@@ -23,6 +23,134 @@ namespace std
     typedef uint16_t bool2_t;
     typedef uint8_t  bool1_t;
 
+    struct u8 {
+        std::uint8_t val;
+
+        static u8 fromUInt(std::uint64_t v) {
+            return u8 {
+                val: static_cast<std::uint8_t>(v)
+            };
+        }
+
+        static u8 fromInt(std::int64_t v) {
+            return u8 {
+                val: static_cast<std::uint8_t>(v)
+            };
+        }
+    }
+
+    struct u16 {
+        std::uint16_t val;
+
+        static u16 fromUInt(std::uint64_t v) {
+            return u16 {
+                val: static_cast<std::uint16_t>(v)
+            };
+        }
+
+        static u16 fromInt(std::int64_t v) {
+            return u16 {
+                val: static_cast<std::uint16_t>(v)
+            };
+        }
+    }
+
+    struct u32 {
+        std::uint32_t val;
+
+        static u32 fromUInt(std::uint64_t v) {
+            return u32 {
+                val: static_cast<std::uint32_t>(v)
+            };
+        }
+
+        static u32 fromInt(std::int64_t v) {
+            return u32 {
+                val: static_cast<std::uint32_t>(v)
+            };
+        }
+    }
+
+    struct u64 {
+        std::uint64_t val;
+
+        static u64 fromUInt(std::uint64_t v) {
+            return u64 {
+                val: v
+            };
+        }
+
+        static u64 fromInt(std::int64_t v) {
+            return u64 {
+                val: static_cast<std::uint64_t>(v)
+            };
+        }
+    }
+
+    struct i8 {
+        std::int8_t val;
+
+        static i8 fromUInt(std::uint64_t v) {
+            return i8 {
+                val: static_cast<std::int8_t>(v)
+            };
+        }
+
+        static i8 fromInt(std::int64_t v) {
+            return i8 {
+                val: static_cast<std::int8_t>(v)
+            };
+        }
+    }
+    
+    struct i16 {
+        std::int16_t val;
+
+        static i16 fromUInt(std::uint64_t v) {
+            return i16 {
+                val: static_cast<std::int16_t>(v)
+            };
+        }
+
+        static i16 fromInt(std::int64_t v) {
+            return i16 {
+                val: static_cast<std::int16_t>(v)
+            };
+        }
+    }
+
+    struct i32 {
+        std::int32_t val;
+
+        static i32 fromUInt(std::uint64_t v) {
+            return i32 {
+                val: static_cast<std::int32_t>(v)
+            };
+        }
+
+        static i32 fromInt(std::int64_t v) {
+            return i32 {
+                val: static_cast<std::int32_t>(v)
+            };
+        }
+    }
+
+    struct i64 {
+        std::int64_t val;
+
+        static i64 fromUInt(std::uint64_t v) {
+            return i64 {
+                val: static_cast<std::int64_t>(v)
+            };
+        }
+
+        static i64 fromInt(std::int64_t v) {
+            return i64 {
+                val: v
+            };
+        }
+    }
+
     /*
         Pointer-sized types
     */

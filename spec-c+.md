@@ -11,7 +11,7 @@
 | enums                           | 2026-08-03 | 2026-08-03    | IN-USE                         |
 | enums::variants                 | 2026-08-03 | 2026-08-03    | IN-USE                         |
 | defer                           | 2026-08-05 | 2026-08-07    | IN-USE                         |
-| defer::lowering                 | 2026-08-07 | 2026-08-07    | IN-USE                         |
+| defer::lowering                 | 2026-08-07 | 2026-08-17    | IN-USE                         |
 | defer::loops                    | 2026-08-07 | 2026-08-07    | IN-USE                         |
 | defer::multiple                 | 2026-08-07 | 2026-08-07    | IN-USE                         |
 | defer::goto                     | 2026-08-07 | 2026-08-07    | IN-USE                         |
@@ -357,6 +357,28 @@ while (a)
 ```
 
 That means b.destruct() does not run, but a.destruct() will run as the loop `while (a)` is not exited before calling a.destruct().
+
+Furthermore, a parent's defer does not lower into subsequent scopes, meaning it is scope-bound to the defer-named scope. If, though by chance, there are any early returns in subsequent scopes, the defer escapes its scope-boundedness to place itself before that return, otherwise it will not.
+
+```cx
+while (true)
+{
+    std::String s = std::String::fromChars("Hi!");
+    defer {
+        s.destroy();
+    }
+
+    if (!std::isOnlyDigit(s.chars()))
+    {
+        std::puts("That is not a valid number!");
+        break; // defer is not appended before this break
+    }
+
+    // other code
+}
+```
+
+will emit the s.destroy, or otherwise also known as std_String_destroy(std_String *), at the end of the lexical scope of the while loop, as that is its defer-named scope.
 
 ### Regarding multiple defer's (7th August 2026)
 C+ uses a LIFO approach to defer-unwinding, that means whichever defer was last put into the defer stack is the first defer to be emitted.
