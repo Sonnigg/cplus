@@ -150,6 +150,9 @@ char *dir_name(const char *path)
     }
 }
 
+// Declare the external getter from transpiler.c
+const char *get_libc_path(void);
+
 char *resolve_include_path(const char *from_file, const char *spec, bool angle)
 {
     char *cwd = get_cwd();
@@ -169,13 +172,16 @@ char *resolve_include_path(const char *from_file, const char *spec, bool angle)
         candidates[count++] = path_join(base, filename);
         free(filename);
     }
+    
     if (angle) {
+        const char *lib_dir = get_libc_path();
         for (i = 0; i < sizeof(variants) / sizeof(variants[0]); ++i) {
             char *filename = xmalloc(strlen(spec) + strlen(variants[i]) + 1);
             strcpy(filename, spec);
             strcat(filename, variants[i]);
             candidates[count++] = path_join(cwd, filename);
-            candidates[count++] = path_join3(cwd, "libc+", filename);
+            // Use the absolute installation libc+ path instead of cwd/libc+
+            candidates[count++] = path_join(lib_dir, filename);
             free(filename);
         }
     }

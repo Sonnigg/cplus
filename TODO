@@ -8,7 +8,7 @@ Priority 2/10 : Making libc+
     Priority 9/10 : Making the C+ pre-processor in the C+ compiler
     |> Therefore also adding proper Header inclusion
         ^^ (so that there is no unknown qualified name if it exists in an included header)
-    |> #include <...> looks in .cplus/libc+/* and matches the source name to whatever file (without extension)
+    |> #include <...> looks in cplus/libc+/* and matches the source name to whatever file (without extension)
     |> also has that, you can optionally add the extension, e.g. #include <libc+.hp>, though #include <libc+> would suffice
     |> the compiler will first look for .hp and then .h+ extensions before looking if you have a local include folder
     |> in the CWD, if you do, it looks in there, if not, it'll say it couldn't find the file.

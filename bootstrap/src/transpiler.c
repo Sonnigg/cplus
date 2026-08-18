@@ -1,8 +1,216 @@
 #include "transpiler.h"
+#include "common.h"
+
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <unistd.h>
+    #include <limits.h>
+#endif
 
 static void rewrite_line(Buffer *out, const char *line)
 {
     buffer_puts(out, line);
+}
+
+/* ============================================================
+ * PATH_MAX
+ * ============================================================ */
+
+#ifndef PATH_MAX
+    #ifdef _WIN32
+        #define PATH_MAX 32768
+    #else
+        #define PATH_MAX 4096
+    #endif
+#endif
+
+
+/* ============================================================
+ * Include cache
+ * ============================================================ */
+
+typedef struct IncludeCacheEntry
+{
+    char *path;
+    char *source;
+} IncludeCacheEntry;
+
+static IncludeCacheEntry *include_cache = NULL;
+static size_t include_cache_count = 0;
+static size_t include_cache_capacity = 0;
+
+
+static const char *include_cache_get(const char *path)
+{
+    for (size_t i = 0; i < include_cache_count; ++i)
+    {
+        if (strcmp(include_cache[i].path, path) == 0)
+            return include_cache[i].source;
+    }
+
+    return NULL;
+}
+
+
+static void include_cache_put(const char *path, char *source)
+{
+    if (include_cache_count == include_cache_capacity)
+    {
+        include_cache_capacity =
+            include_cache_capacity
+                ? include_cache_capacity * 2
+                : 16;
+
+        include_cache = realloc(
+            include_cache,
+            include_cache_capacity * sizeof(*include_cache)
+        );
+
+        if (!include_cache)
+            die("out of memory");
+    }
+
+    include_cache[include_cache_count].path = strdup(path);
+    include_cache[include_cache_count].source = source;
+
+    ++include_cache_count;
+}
+
+
+/* ============================================================
+ * libc+ path
+ *
+ * Installation layout:
+ *
+ *     cplus/
+ *     ├── bin/
+ *     │   └── cplus.exe
+ *     │
+ *     └── libc+/
+ *         ├── types.hp
+ *         ├── io.hp
+ *         └── ...
+ *
+ * ============================================================ */
+
+static char libc_path[PATH_MAX];
+static bool libc_path_initialized = false;
+
+static void init_libc_path(void)
+{
+    if (libc_path_initialized)
+        return;
+
+    char exe_path[PATH_MAX];
+
+#ifdef _WIN32
+
+    DWORD len = GetModuleFileNameA(
+        NULL,
+        exe_path,
+        sizeof(exe_path)
+    );
+
+    if (len == 0 || len >= sizeof(exe_path))
+        die("could not determine compiler executable path");
+
+#else
+
+    ssize_t len = readlink(
+        "/proc/self/exe",
+        exe_path,
+        sizeof(exe_path) - 1
+    );
+
+    if (len <= 0 || (size_t)len >= sizeof(exe_path) - 1)
+        die("could not determine compiler executable path");
+
+    exe_path[len] = '\0';
+
+#endif
+
+    /*
+     * Find the executable's directory.
+     *
+     * Example:
+     *
+     *     C:\foo\cplus\bin\cplus.exe
+     *                         ^
+     *                         exe_path
+     *
+     * becomes:
+     *
+     *     C:\foo\cplus\bin
+     */
+
+    char *slash = strrchr(exe_path, '/');
+
+#ifdef _WIN32
+    char *backslash = strrchr(exe_path, '\\');
+
+    if (!slash || (backslash && backslash > slash))
+        slash = backslash;
+#endif
+
+    if (slash)
+        *slash = '\0';
+    else
+        strcpy(exe_path, ".");
+
+    /*
+     * Now exe_path points to:
+     *
+     *     .../cplus/bin
+     *
+     * We need:
+     *
+     *     .../cplus/libc+
+     *
+     * Therefore remove the "bin" component.
+     */
+
+    slash = strrchr(exe_path, '/');
+
+#ifdef _WIN32
+    backslash = strrchr(exe_path, '\\');
+
+    if (!slash || (backslash && backslash > slash))
+        slash = backslash;
+#endif
+
+    if (!slash)
+        die("could not determine compiler installation directory");
+
+    *slash = '\0';
+
+#ifdef _WIN32
+
+    snprintf(
+        libc_path,
+        sizeof(libc_path),
+        "%s\\libc+",
+        exe_path
+    );
+
+#else
+
+    snprintf(
+        libc_path,
+        sizeof(libc_path),
+        "%s/libc+",
+        exe_path
+    );
+
+#endif
+
+    libc_path_initialized = true;
+}
+
+const char *get_libc_path(void)
+{
+    init_libc_path();
+    return libc_path;
 }
 
 char *preprocess_source(const char *path, const char *src, int depth)
@@ -10,72 +218,202 @@ char *preprocess_source(const char *path, const char *src, int depth)
     Buffer out;
     const char *line_start = src;
     const char *end = src + strlen(src);
+
     buffer_init(&out);
-    if (depth > 32) die("include nesting too deep");
-    while (line_start < end) {
+
+    if (depth > 32)
+        die("include nesting too deep");
+
+    while (line_start < end)
+    {
         const char *line_end = line_start;
-        while (line_end < end && *line_end != '\n') ++line_end;
+
+        while (line_end < end && *line_end != '\n')
+            ++line_end;
+
         {
             size_t n = (size_t)(line_end - line_start);
             char *line = xmalloc(n + 1);
+
             memcpy(line, line_start, n);
             line[n] = 0;
-            if (n > 0 && line[0] == '#' && strncmp(line, "#include", 8) == 0) {
+
+            if (n > 0 &&
+                line[0] == '#' &&
+                strncmp(line, "#include", 8) == 0)
+            {
                 char *spec = NULL;
                 bool angle = false;
                 char *p = line + 8;
-                while (*p && isspace((unsigned char)*p)) ++p;
-                if (*p == '<') {
+
+                while (*p && isspace((unsigned char)*p))
+                    ++p;
+
+                if (*p == '<')
+                {
                     const char *q = ++p;
                     angle = true;
-                    while (*q && *q != '>') ++q;
-                    if (*q == '>') {
+
+                    while (*q && *q != '>')
+                        ++q;
+
+                    if (*q == '>')
+                    {
                         size_t len = (size_t)(q - p);
-                        spec = xmalloc(len + 1);
-                        memcpy(spec, p, len);
-                        spec[len] = 0;
-                    }
-                } else if (*p == '"') {
-                    const char *q = ++p;
-                    while (*q && *q != '"') ++q;
-                    if (*q == '"') {
-                        size_t len = (size_t)(q - p);
+
                         spec = xmalloc(len + 1);
                         memcpy(spec, p, len);
                         spec[len] = 0;
                     }
                 }
-                if (spec) {
-                    char *resolved = resolve_include_path(path, spec, angle);
-                    if (resolved) {
-                        char *included = read_file(resolved);
-                        if (included) {
-                            char *child = preprocess_source(resolved, included, depth + 1);
-                            buffer_puts(&out, child);
-                            buffer_putc(&out, '\n');
-                            free(child);
-                            free(included);
+                else if (*p == '"')
+                {
+                    const char *q = ++p;
+
+                    while (*q && *q != '"')
+                        ++q;
+
+                    if (*q == '"')
+                    {
+                        size_t len = (size_t)(q - p);
+
+                        spec = xmalloc(len + 1);
+                        memcpy(spec, p, len);
+                        spec[len] = 0;
+                    }
+                }
+
+                if (spec)
+                {
+                    bool do_inline = false;
+                    size_t spec_len = strlen(spec);
+
+                    /* Check if the included spec is targeted for inlining */
+                    if (spec_len >= 3 && strcmp(spec + spec_len - 3, ".hp") == 0)
+                        do_inline = true;
+                    else if (spec_len >= 3 && strcmp(spec + spec_len - 3, ".h+") == 0)
+                        do_inline = true;
+                    else if (spec_len >= 0 && strcmp(spec + spec_len, "") == 0)
+                        do_inline = true;
+                    else
+                    {
+                        const char *slash = strrchr(spec, '/');
+                        const char *backslash = strrchr(spec, '\\');
+                        const char *dot = strrchr(spec, '.');
+
+                        if (slash && backslash && backslash > slash) slash = backslash;
+                        else if (!slash) slash = backslash;
+
+                        /* If there is no dot, or the dot is part of a directory name, it has no extension */
+                        if (!dot || (slash && dot < slash))
+                            do_inline = true;
+                    }
+
+                    if (do_inline)
+                    {
+                        char *resolved =
+                            resolve_include_path(path, spec, angle);
+
+                        if (resolved)
+                        {
+                            bool resolved_inline = true;
+                            size_t res_len = strlen(resolved);
+
+                            /* Prevent inlining if it resolved to a .h fallback */
+                            if (res_len >= 2 && strcmp(resolved + res_len - 2, ".h") == 0)
+                                resolved_inline = false;
+
+                            if (resolved_inline)
+                            {
+                                /*
+                                 * Check whether this file has already
+                                 * been completely preprocessed.
+                                 */
+                                const char *cached =
+                                    include_cache_get(resolved);
+
+                                if (cached)
+                                {
+                                    buffer_puts(&out, cached);
+                                    buffer_putc(&out, '\n');
+                                }
+                                else
+                                {
+                                    char *included = read_file(resolved);
+
+                                    if (included)
+                                    {
+                                        char *child =
+                                            preprocess_source(
+                                                resolved,
+                                                included,
+                                                depth + 1
+                                            );
+
+                                        /*
+                                         * Store the preprocessed source.
+                                         *
+                                         * The cache takes ownership of
+                                         * `child`, so don't free it here.
+                                         */
+                                        include_cache_put(
+                                            resolved,
+                                            child
+                                        );
+
+                                        buffer_puts(&out, child);
+                                        buffer_putc(&out, '\n');
+
+                                        free(included);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                /* Keep unresolved includes unchanged. */
+                                buffer_puts(&out, line);
+                            }
+
+                            free(resolved);
                         }
-                        free(resolved);
-                    } else {
+                        else
+                        {
+                            /* Keep unresolved includes unchanged. */
+                            buffer_puts(&out, line);
+                        }
+                    }
+                    else
+                    {
+                        /* Do not resolve or inline files that have a .h or other unhandled extension. */
                         buffer_puts(&out, line);
                     }
+
                     free(spec);
-                } else {
+                }
+                else
+                {
                     buffer_puts(&out, line);
                 }
-            } else {
+            }
+            else
+            {
                 rewrite_line(&out, line);
             }
+
             free(line);
         }
-        if (line_end < end) {
+
+        if (line_end < end)
+        {
             buffer_putc(&out, '\n');
             line_start = line_end + 1;
-        } else {
+        }
+        else
+        {
             break;
         }
     }
+
     return out.data;
 }
 

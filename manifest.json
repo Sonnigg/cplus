@@ -4,7 +4,7 @@
         "cc+",
         "cplus"
     ],
-    "version": "0.3.7",
+    "version": "0.5.0",
     "dependencies": {
         "tcc": {
             "version": "0.9.27",

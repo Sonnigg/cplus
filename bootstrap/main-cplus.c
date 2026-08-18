@@ -940,15 +940,21 @@ int main(int argc, char **argv)
         }
 
         if (!endopt && a[0] != '-') {
-            add_globbed_argument(&inputs, a);
+            size_t len = strlen(a);
+            /* Check if input file ends in .c */
+            if (len >= 2 && strcmp(a + len - 2, ".c") == 0) {
+                args_push(&backend, a);
+            } else {
+                add_globbed_argument(&inputs, a);
+            }
             continue;
         }
 
         args_push(&backend, a);
     }
 
-    if (inputs.count == 0) {
-        die("no input .c+ file specified");
+    if (inputs.count == 0 && backend.count == 0) {
+        die("no input files specified");
     }
 
     cstats.input_files = inputs.count;

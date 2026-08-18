@@ -9,4 +9,4 @@ cx/*.new
 *.txt
 *.exe
 *.cp
-*.c
+*.gencx.c

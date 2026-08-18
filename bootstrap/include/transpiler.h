@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TRANSPILER_H
+#define TRANSPILER_H
+
 #include "common.h"
 #include "lexer.h"
 #include "symbols.h"
@@ -40,3 +42,4 @@ void transpile(Transpiler *t);
 
 void locals_init(LocalTable *v);
 void locals_free(LocalTable *v);
+#endif
