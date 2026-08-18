@@ -1,6 +1,7 @@
 #ifndef _RANDOM_HP
 #define _RANDOM_HP
 #include <types>
+#include <time>
 namespace std {
     struct Random {
         std::uint32_t __state;
@@ -12,7 +13,7 @@ namespace std {
          * xorshift32 has a zero-locking state.
          */
         static Random new(std::uint32_t seed) {
-            if (!seed) seed = 0x9E3779B9;
+            if (!seed) seed = 0x9E3779B9 ^ ((std::time::now().totalNanoseconds() >> 3) ^ 0xFF43);
             return Random {
                 __state: seed,
             };
@@ -105,7 +106,7 @@ namespace std {
          
         void seed(Random *self, std::uint32_t value) {
             if (!self) return;
-            if (!value) value = 0x9E3779B9;
+            if (!value) value = 0x9E3779B9 ^ ((std::time::now().totalNanoseconds() >> 3) ^ 0xFF43);
             self->__state = value;
         }
         

@@ -23,6 +23,25 @@ namespace std
     typedef uint16_t bool2_t;
     typedef uint8_t  bool1_t;
 
+    /*
+        Pointer-sized types
+    */
+#if CMPL__PTR_SIZE == 8
+    typedef uint64_t ptrsize_t;
+    typedef int64_t  sptrsize_t;
+
+#elif CMPL__PTR_SIZE == 4
+    typedef uint32_t ptrsize_t;
+    typedef int32_t  sptrsize_t;
+
+#elif CMPL__PTR_SIZE == 2
+    typedef uint16_t ptrsize_t;
+    typedef int16_t  sptrsize_t;
+
+#endif
+    typedef ptrsize_t  size_t;
+    typedef sptrsize_t ssize_t;
+
     struct u8 {
         std::uint8_t val;
 
@@ -41,14 +60,14 @@ namespace std
         static u8 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return u8 {val: 0};
 
             std::uint64_t result = 0;
 
             for (std::size_t i = 0; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return u8 {val: 0};
 
                 std::uint64_t digit =
                     static_cast<std::uint64_t>(string[i] - '0');
@@ -56,7 +75,7 @@ namespace std
                 result = result * 10 + digit;
             }
 
-            return result;
+            return u8 {val: result};
         }
     }
 
@@ -78,14 +97,14 @@ namespace std
         static u16 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return u16 {val: 0};
 
             std::uint64_t result = 0;
 
             for (std::size_t i = 0; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return u16 {val: 0};
 
                 std::uint64_t digit =
                     static_cast<std::uint64_t>(string[i] - '0');
@@ -93,7 +112,7 @@ namespace std
                 result = result * 10 + digit;
             }
 
-            return result;
+            return u16 { val: result };
         }
     }
 
@@ -115,14 +134,14 @@ namespace std
         static u32 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return u32 {val: 0};
 
             std::uint64_t result = 0;
 
             for (std::size_t i = 0; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return u32 {val: 0};
 
                 std::uint64_t digit =
                     static_cast<std::uint64_t>(string[i] - '0');
@@ -130,7 +149,7 @@ namespace std
                 result = result * 10 + digit;
             }
 
-            return result;
+            return u32 { val: result};
         }
     }
 
@@ -152,14 +171,14 @@ namespace std
         static u64 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return u64 {val: 0};
 
             std::uint64_t result = 0;
 
             for (std::size_t i = 0; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return u64 {val: 0};
 
                 std::uint64_t digit =
                     static_cast<std::uint64_t>(string[i] - '0');
@@ -167,7 +186,7 @@ namespace std
                 result = result * 10 + digit;
             }
 
-            return result;
+            return u64 {val: result};
         }
     }
 
@@ -189,7 +208,7 @@ namespace std
         static i8 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return i8 {val: 0};
 
             std::size_t i = 0;
             bool negative = false;
@@ -200,15 +219,15 @@ namespace std
                 i = 1;
 
                 if (!string[i])
-                    return 0;
+                    return i8 {val: 0};
             }
 
             std::int64_t result = 0;
 
             for (; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return i8 {val: 0};
 
                 std::int64_t digit =
                     static_cast<std::int64_t>(string[i] - '0');
@@ -219,7 +238,7 @@ namespace std
             if (negative)
                 result = -result;
 
-            return result;
+            return i8 {val: result};
         }
     }
     
@@ -241,7 +260,7 @@ namespace std
         static i16 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return i16 {val: 0};
 
             std::size_t i = 0;
             bool negative = false;
@@ -252,15 +271,15 @@ namespace std
                 i = 1;
 
                 if (!string[i])
-                    return 0;
+                    return i16 {val: 0};
             }
 
             std::int64_t result = 0;
 
             for (; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return i16 {val: 0};
 
                 std::int64_t digit =
                     static_cast<std::int64_t>(string[i] - '0');
@@ -271,7 +290,7 @@ namespace std
             if (negative)
                 result = -result;
 
-            return result;
+            return i16 {val: result};
         }
     }
 
@@ -293,7 +312,7 @@ namespace std
         static i32 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return i32 {val: 0};
 
             std::size_t i = 0;
             bool negative = false;
@@ -304,15 +323,15 @@ namespace std
                 i = 1;
 
                 if (!string[i])
-                    return 0;
+                    return i32 {val: 0};
             }
 
             std::int64_t result = 0;
 
             for (; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return i32 {val: 0};
 
                 std::int64_t digit =
                     static_cast<std::int64_t>(string[i] - '0');
@@ -323,7 +342,7 @@ namespace std
             if (negative)
                 result = -result;
 
-            return result;
+            return i32 {val: result};
         }
     }
 
@@ -345,7 +364,7 @@ namespace std
         static i64 fromChars(const char *const string)
         {
             if (!string || !string[0])
-                return 0;
+                return i64 {val: 0};
 
             std::size_t i = 0;
             bool negative = false;
@@ -356,15 +375,15 @@ namespace std
                 i = 1;
 
                 if (!string[i])
-                    return 0;
+                    return i64 {val: 0};
             }
 
             std::int64_t result = 0;
 
             for (; string[i]; i++)
             {
-                if (!std::isDigit(string[i]))
-                    return 0;
+                if (!(string[i] >= '0' && string[i] <= '9'))
+                    return i64 {val: 0};
 
                 std::int64_t digit =
                     static_cast<std::int64_t>(string[i] - '0');
@@ -375,28 +394,9 @@ namespace std
             if (negative)
                 result = -result;
 
-            return result;
+            return i64 {val: result};
         }
     }
-
-    /*
-        Pointer-sized types
-    */
-#if CMPL__PTR_SIZE == 8
-    typedef uint64_t ptrsize_t;
-    typedef int64_t  sptrsize_t;
-
-#elif CMPL__PTR_SIZE == 4
-    typedef uint32_t ptrsize_t;
-    typedef int32_t  sptrsize_t;
-
-#elif CMPL__PTR_SIZE == 2
-    typedef uint16_t ptrsize_t;
-    typedef int16_t  sptrsize_t;
-
-#endif
-    typedef ptrsize_t  size_t;
-    typedef sptrsize_t ssize_t;
 } // namespace std
 
 #endif // #ifndef _TYPES_HP

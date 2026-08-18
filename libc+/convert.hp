@@ -33,7 +33,7 @@ namespace std
 
         for (std::size_t i = 0; string[i]; i++)
         {
-            if (!std::isDigit(string[i]))
+            if (!(string[i] >= '0' && string[i] <= '9'))
                 return 0;
 
             std::uint64_t digit =
@@ -81,7 +81,7 @@ namespace std
 
         for (; string[i]; i++)
         {
-            if (!std::isDigit(string[i]))
+            if (!(string[i] >= '0' && string[i] <= '9'))
                 return 0;
 
             std::int64_t digit =
