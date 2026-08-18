@@ -37,6 +37,27 @@ namespace std
                 val: static_cast<std::uint8_t>(v)
             };
         }
+
+        static u8 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::uint64_t result = 0;
+
+            for (std::size_t i = 0; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::uint64_t digit =
+                    static_cast<std::uint64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            return result;
+        }
     }
 
     struct u16 {
@@ -52,6 +73,27 @@ namespace std
             return u16 {
                 val: static_cast<std::uint16_t>(v)
             };
+        }
+
+        static u16 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::uint64_t result = 0;
+
+            for (std::size_t i = 0; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::uint64_t digit =
+                    static_cast<std::uint64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            return result;
         }
     }
 
@@ -69,6 +111,27 @@ namespace std
                 val: static_cast<std::uint32_t>(v)
             };
         }
+
+        static u32 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::uint64_t result = 0;
+
+            for (std::size_t i = 0; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::uint64_t digit =
+                    static_cast<std::uint64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            return result;
+        }
     }
 
     struct u64 {
@@ -84,6 +147,27 @@ namespace std
             return u64 {
                 val: static_cast<std::uint64_t>(v)
             };
+        }
+
+        static u64 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::uint64_t result = 0;
+
+            for (std::size_t i = 0; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::uint64_t digit =
+                    static_cast<std::uint64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            return result;
         }
     }
 
@@ -101,6 +185,42 @@ namespace std
                 val: static_cast<std::int8_t>(v)
             };
         }
+
+        static i8 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::size_t i = 0;
+            bool negative = false;
+
+            if (string[0] == '-')
+            {
+                negative = true;
+                i = 1;
+
+                if (!string[i])
+                    return 0;
+            }
+
+            std::int64_t result = 0;
+
+            for (; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::int64_t digit =
+                    static_cast<std::int64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            if (negative)
+                result = -result;
+
+            return result;
+        }
     }
     
     struct i16 {
@@ -116,6 +236,42 @@ namespace std
             return i16 {
                 val: static_cast<std::int16_t>(v)
             };
+        }
+
+        static i16 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::size_t i = 0;
+            bool negative = false;
+
+            if (string[0] == '-')
+            {
+                negative = true;
+                i = 1;
+
+                if (!string[i])
+                    return 0;
+            }
+
+            std::int64_t result = 0;
+
+            for (; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::int64_t digit =
+                    static_cast<std::int64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            if (negative)
+                result = -result;
+
+            return result;
         }
     }
 
@@ -133,6 +289,42 @@ namespace std
                 val: static_cast<std::int32_t>(v)
             };
         }
+
+        static i32 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::size_t i = 0;
+            bool negative = false;
+
+            if (string[0] == '-')
+            {
+                negative = true;
+                i = 1;
+
+                if (!string[i])
+                    return 0;
+            }
+
+            std::int64_t result = 0;
+
+            for (; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::int64_t digit =
+                    static_cast<std::int64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            if (negative)
+                result = -result;
+
+            return result;
+        }
     }
 
     struct i64 {
@@ -148,6 +340,42 @@ namespace std
             return i64 {
                 val: v
             };
+        }
+
+        static i64 fromChars(const char *const string)
+        {
+            if (!string || !string[0])
+                return 0;
+
+            std::size_t i = 0;
+            bool negative = false;
+
+            if (string[0] == '-')
+            {
+                negative = true;
+                i = 1;
+
+                if (!string[i])
+                    return 0;
+            }
+
+            std::int64_t result = 0;
+
+            for (; string[i]; i++)
+            {
+                if (!std::isDigit(string[i]))
+                    return 0;
+
+                std::int64_t digit =
+                    static_cast<std::int64_t>(string[i] - '0');
+
+                result = result * 10 + digit;
+            }
+
+            if (negative)
+                result = -result;
+
+            return result;
         }
     }
 
