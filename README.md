@@ -18,7 +18,7 @@ Currently, C+ provides pre-built compiler packages for:
 Windows ARM64 is currently not supported.
 > Do note that those pre-built compiler packages are for TinyCC and not the C+ Compiler itself.
 
-As of the 18th August 2026, the C+ Compiler has reached v0.5.0 and libc+ has reached v0.2.0, whereas the specification has reached the standard C+26, C+26.08, C+26-08-18.
+As of the 19th August 2026, the C+ Compiler has reached v0.6.0 and libc+ has reached v0.2.2, whereas the specification has reached the standard C+26, C+26.08, C+26-08-18.
 
 ## What is C+?
 Simply put, **C+ started as my C++ dialect, but grew into its own language**. It gives a lot of functionality beyond C's simple structs, as it introduces proper namespaces, scoped enums, and better structs that can actually have methods with the lowering being C-like (more on that below).
