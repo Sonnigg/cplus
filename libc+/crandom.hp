@@ -8,8 +8,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <wincrypt.h>
-#pragma comment(lib, "advapi32.lib")
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -22,7 +20,7 @@ namespace std
     {
         /*
          * Fills the provided buffer with cryptographically secure random bytes
-         * using OS-provided entropy sources (CryptGenRandom on Windows, /dev/urandom on POSIX).
+         * using OS-provided entropy sources (SystemFunction036 / RtlGenRandom dynamically loaded on Windows, /dev/urandom on POSIX).
          */
         static bool fillBytes(void *buffer, std::size_t size)
         {
@@ -30,14 +28,23 @@ namespace std
                 return false;
 
 #ifdef _WIN32
-            HCRYPTPROV hCryptProv = 0;
-            if (!CryptAcquireContextA(&hCryptProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
+            // Use dynamic loading for advapi32.dll / SystemFunction036 (RtlGenRandom)
+            // to avoid missing headers (wincrypt.h) and compiler-specific import pragmas in TinyCC.
+            HMODULE hAdvApi = LoadLibraryA("advapi32.dll");
+            if (!hAdvApi)
+                return false;
+
+            typedef BOOLEAN (WINAPI *RtlGenRandom_t)(PVOID, ULONG);
+            RtlGenRandom_t pRtlGenRandom = (RtlGenRandom_t)GetProcAddress(hAdvApi, "SystemFunction036");
+            
+            if (!pRtlGenRandom)
             {
+                FreeLibrary(hAdvApi);
                 return false;
             }
 
-            BOOL success = CryptGenRandom(hCryptProv, static_cast<DWORD>(size), static_cast<BYTE *>(buffer));
-            CryptReleaseContext(hCryptProv, 0);
+            BOOL success = pRtlGenRandom(buffer, static_cast<ULONG>(size));
+            FreeLibrary(hAdvApi);
             return success != 0;
 #else
             int fd = open("/dev/urandom", O_RDONLY);
@@ -69,7 +76,7 @@ namespace std
         static std::uint32_t nextUInt32()
         {
             std::uint32_t value = 0;
-            if (!CryptoRandom::fillBytes(&value, sizeof(value)))
+            if (!std::CryptoRandom::fillBytes(&value, sizeof(value)))
             {
                 return 0;
             }
@@ -82,7 +89,7 @@ namespace std
         static std::uint64_t nextUInt64()
         {
             std::uint64_t value = 0;
-            if (!CryptoRandom::fillBytes(&value, sizeof(value)))
+            if (!std::CryptoRandom::fillBytes(&value, sizeof(value)))
             {
                 return 0;
             }
@@ -91,7 +98,7 @@ namespace std
 
         /*
          * Generates a cryptographically secure random unsigned integer within [min, max].
-        */
+         */
         static std::uint64_t nextUIntRange(std::uint64_t min, std::uint64_t max)
         {
             if (min > max)
@@ -101,7 +108,7 @@ namespace std
             if (range == 0)
             {
                 // Full range of uint64_t
-                return CryptoRandom::nextUInt64();
+                return std::CryptoRandom::nextUInt64();
             }
 
             // Reject bias mitigation using modulo filtering
@@ -110,7 +117,7 @@ namespace std
 
             do
             {
-                value = CryptoRandom::nextUInt64();
+                value = std::CryptoRandom::nextUInt64();
             }
             while (value >= limit);
 
