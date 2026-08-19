@@ -21,6 +21,11 @@ namespace std
 
         return result;
     }
+
+    void printString(std::String _str)
+    {
+        std::puts(_str.chars());
+    }
 }
 
 #endif // #ifndef _IO_HP
