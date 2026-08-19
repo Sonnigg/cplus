@@ -147,6 +147,137 @@ static int run_process(Arguments *a)
 }
 #endif
 
+/* --- PATH CHECKING & WEB COMPILER DOWNLOADER --- */
+
+static bool check_path_executable(const char *name, char *out_path, size_t out_size)
+{
+    const char *path_env = getenv("PATH");
+    if (!path_env) return false;
+
+    char *path_copy = xstrdup(path_env);
+#ifdef _WIN32
+    const char *delim = ";";
+#else
+    const char *delim = ":";
+#endif
+
+    char *token = strtok(path_copy, delim);
+    while (token != NULL) {
+        char full_path[1024];
+#ifdef _WIN32
+        snprintf(full_path, sizeof(full_path), "%s\\%s.exe", token, name);
+        if (access(full_path, 0) == 0) {
+            snprintf(out_path, out_size, "%s", full_path);
+            free(path_copy);
+            return true;
+        }
+        snprintf(full_path, sizeof(full_path), "%s\\%s", token, name);
+        if (access(full_path, 0) == 0) {
+            snprintf(out_path, out_size, "%s", full_path);
+            free(path_copy);
+            return true;
+        }
+#else
+        snprintf(full_path, sizeof(full_path), "%s/%s", token, name);
+        if (access(full_path, X_OK) == 0) {
+            snprintf(out_path, out_size, "%s", full_path);
+            free(path_copy);
+            return true;
+        }
+#endif
+        token = strtok(NULL, delim);
+    }
+
+    free(path_copy);
+    return false;
+}
+
+static bool download_file_from_web(const char *url, const char *out_path)
+{
+    Arguments cmd;
+    args_init(&cmd);
+
+#ifdef _WIN32
+    args_push(&cmd, "powershell");
+    args_push(&cmd, "-NoProfile");
+    args_push(&cmd, "-Command");
+    char ps_cmd[1024];
+    snprintf(ps_cmd, sizeof(ps_cmd), "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%s' -OutFile '%s'", url, out_path);
+    args_push(&cmd, ps_cmd);
+#else
+    args_push(&cmd, "curl");
+    args_push(&cmd, "-L");
+    args_push(&cmd, "-o");
+    args_push(&cmd, (char *)out_path);
+    args_push(&cmd, (char *)url);
+#endif
+
+    int res = run_process(&cmd);
+    args_free(&cmd);
+    return res == 0;
+}
+
+static bool get_release_compiler_path(char *out_path, size_t out_size)
+{
+    // 1. Check if clang or gcc is already available anywhere in PATH
+    if (check_path_executable("clang", out_path, out_size)) {
+        return true;
+    }
+    if (check_path_executable("gcc", out_path, out_size)) {
+        return true;
+    }
+
+    // 2. If not found in PATH, prepare web download cache directory
+#ifdef _WIN32
+    _mkdir(".cplus_cache");
+#else
+    mkdir(".cplus_cache", 0755);
+#endif
+
+    const char *url = NULL;
+    char cached_compiler[1024];
+
+#if defined(_WIN32)
+    #if defined(_M_X64) || defined(_M_AMD64)
+    snprintf(cached_compiler, sizeof(cached_compiler), ".cplus_cache\\clang.exe");
+    url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/clang-windows-x86_64.exe";
+    #else
+    snprintf(cached_compiler, sizeof(cached_compiler), ".cplus_cache\\clang.exe");
+    url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/clang-windows-i386.exe";
+    #endif
+#elif defined(__linux__)
+    #if defined(__x86_64__)
+    snprintf(cached_compiler, sizeof(cached_compiler), ".cplus_cache/clang");
+    url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/clang-linux-x86_64";
+    #elif defined(__aarch64__)
+    snprintf(cached_compiler, sizeof(cached_compiler), ".cplus_cache/clang");
+    url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/clang-linux-aarch64";
+    #else
+    snprintf(cached_compiler, sizeof(cached_compiler), ".cplus_cache/clang");
+    url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/clang-linux-i386";
+    #endif
+#endif
+
+    if (access(cached_compiler, F_OK) == 0) {
+        snprintf(out_path, out_size, "%s", cached_compiler);
+        return true;
+    }
+
+    if (url) {
+        fprintf(stderr, "c+: clang/gcc not found in PATH. Downloading release compiler from the web...\n");
+        if (download_file_from_web(url, cached_compiler)) {
+#ifndef _WIN32
+            chmod(cached_compiler, 0755);
+#endif
+            snprintf(out_path, out_size, "%s", cached_compiler);
+            return true;
+        }
+    }
+
+    snprintf(out_path, out_size, "clang");
+    return false;
+}
+
 /* --- PLATFORM-SPECIFIC GLOBBING IMPLEMENTATION --- */
 
 static void add_globbed_argument(Arguments *dst, const char *pattern)
@@ -295,71 +426,31 @@ static char *path_last_separator(char *path)
 
 static int find_project_root(char *buf, size_t size)
 {
-    /*
-     * First try to locate the actual executable.
-     *
-     * This makes the result completely independent of the CWD.
-     */
 #if defined(_WIN32)
-
     DWORD len = GetModuleFileNameA(NULL, buf, (DWORD)size);
 
     if (len == 0 || len >= size)
         goto cwd_fallback;
 
-    /*
-     * buf:
-     *
-     *   C:\...\cplus\bin\cplus.exe
-     *
-     * Remove executable.
-     */
     char *sep = path_last_separator(buf);
-
     if (!sep)
         goto cwd_fallback;
 
     *sep = '\0';
 
-    /*
-     * Remove "bin".
-     *
-     *   C:\...\cplus\bin
-     *              ^^^
-     */
     sep = path_last_separator(buf);
-
     if (!sep)
         goto cwd_fallback;
 
     *sep = '\0';
 
-    /*
-     * Now buf should be:
-     *
-     *   C:\...\cplus
-     *
-     * Verify that this actually looks like the C+ project.
-     */
     char manifest[1024];
-
-    snprintf(
-        manifest,
-        sizeof(manifest),
-        "%s\\manifest.json",
-        buf
-    );
+    snprintf(manifest, sizeof(manifest), "%s\\manifest.json", buf);
 
     if (access(manifest, F_OK) == 0)
         return 0;
 
 #else
-
-    /*
-     * Linux / Unix:
-     *
-     * /proc/self/exe gives us the actual executable.
-     */
     ssize_t len = readlink("/proc/self/exe", buf, size - 1);
 
     if (len <= 0 || (size_t)len >= size)
@@ -368,93 +459,51 @@ static int find_project_root(char *buf, size_t size)
     buf[len] = '\0';
 
     char *sep = path_last_separator(buf);
-
     if (!sep)
         goto cwd_fallback;
 
     *sep = '\0';
 
-    /*
-     * Remove "bin".
-     */
     sep = path_last_separator(buf);
-
     if (!sep)
         goto cwd_fallback;
 
     *sep = '\0';
 
     char manifest[1024];
-
-    snprintf(
-        manifest,
-        sizeof(manifest),
-        "%s/manifest.json",
-        buf
-    );
+    snprintf(manifest, sizeof(manifest), "%s/manifest.json", buf);
 
     if (access(manifest, F_OK) == 0)
         return 0;
 
 #endif
 
-
 cwd_fallback:
-
-    /*
-     * If the executable-path approach failed, fall back to
-     * walking upward from the current working directory.
-     */
     if (!getcwd(buf, size))
         return -1;
 
     while (1)
     {
         char manifest[1024];
-
 #if defined(_WIN32)
-        snprintf(
-            manifest,
-            sizeof(manifest),
-            "%s\\manifest.json",
-            buf
-        );
+        snprintf(manifest, sizeof(manifest), "%s\\manifest.json", buf);
 #else
-        snprintf(
-            manifest,
-            sizeof(manifest),
-            "%s/manifest.json",
-            buf
-        );
+        snprintf(manifest, sizeof(manifest), "%s/manifest.json", buf);
 #endif
 
         if (access(manifest, F_OK) == 0)
             return 0;
 
         char *sep = path_last_separator(buf);
-
         if (!sep)
             break;
 
 #if defined(_WIN32)
-
-        /*
-         * Don't walk above C:\.
-         */
-        if (sep == buf + 2 &&
-            buf[1] == ':')
-        {
+        if (sep == buf + 2 && buf[1] == ':')
             break;
-        }
-
 #else
-
-        /*
-         * Don't walk above /.
-         */
         if (sep == buf)
             break;
-
 #endif
 
         *sep = '\0';
@@ -477,44 +526,15 @@ static void version(void)
     if (find_project_root(root_dir, sizeof(root_dir)) == 0)
     {
 #if defined(_WIN32)
-
-        snprintf(
-            path1,
-            sizeof(path1),
-            "%s\\manifest.json",
-            root_dir
-        );
-
-        snprintf(
-            path2,
-            sizeof(path2),
-            "%s\\libc+\\manifest.json",
-            root_dir
-        );
-
+        snprintf(path1, sizeof(path1), "%s\\manifest.json", root_dir);
+        snprintf(path2, sizeof(path2), "%s\\libc+\\manifest.json", root_dir);
 #else
-
-        snprintf(
-            path1,
-            sizeof(path1),
-            "%s/manifest.json",
-            root_dir
-        );
-
-        snprintf(
-            path2,
-            sizeof(path2),
-            "%s/libc+/manifest.json",
-            root_dir
-        );
-
+        snprintf(path1, sizeof(path1), "%s/manifest.json", root_dir);
+        snprintf(path2, sizeof(path2), "%s/libc+/manifest.json", root_dir);
 #endif
     }
     else
     {
-        /*
-         * Last resort.
-         */
 #if defined(_WIN32)
         snprintf(path1, sizeof(path1), "cplus\\manifest.json");
         snprintf(path2, sizeof(path2), "cplus\\libc+\\manifest.json");
@@ -529,32 +549,14 @@ static void version(void)
 
     if (manifest)
     {
-        extract_json_value(
-            manifest,
-            "version",
-            cplus_version,
-            sizeof(cplus_version)
-        );
-
-        extract_nested_dependency_version(
-            manifest,
-            "tcc",
-            tcc_version,
-            sizeof(tcc_version)
-        );
-
+        extract_json_value(manifest, "version", cplus_version, sizeof(cplus_version));
+        extract_nested_dependency_version(manifest, "tcc", tcc_version, sizeof(tcc_version));
         free(manifest);
     }
 
     if (manifest2)
     {
-        extract_json_value(
-            manifest2,
-            "version",
-            libcplus_version,
-            sizeof(libcplus_version)
-        );
-
+        extract_json_value(manifest2, "version", libcplus_version, sizeof(libcplus_version));
         free(manifest2);
     }
 
@@ -584,49 +586,24 @@ static int versionCPlus(char *buf, size_t size)
     if (find_project_root(root_dir, sizeof(root_dir)) == 0)
     {
 #if defined(_WIN32)
-        snprintf(
-            manifest_path,
-            sizeof(manifest_path),
-            "%s\\manifest.json",
-            root_dir
-        );
+        snprintf(manifest_path, sizeof(manifest_path), "%s\\manifest.json", root_dir);
 #else
-        snprintf(
-            manifest_path,
-            sizeof(manifest_path),
-            "%s/manifest.json",
-            root_dir
-        );
+        snprintf(manifest_path, sizeof(manifest_path), "%s/manifest.json", root_dir);
 #endif
     }
     else
     {
 #if defined(_WIN32)
-        snprintf(
-            manifest_path,
-            sizeof(manifest_path),
-            "cplus\\manifest.json"
-        );
+        snprintf(manifest_path, sizeof(manifest_path), "cplus\\manifest.json");
 #else
-        snprintf(
-            manifest_path,
-            sizeof(manifest_path),
-            "cplus/manifest.json"
-        );
+        snprintf(manifest_path, sizeof(manifest_path), "cplus/manifest.json");
 #endif
     }
 
     char *manifest = read_file(manifest_path);
-
     if (manifest)
     {
-        extract_json_value(
-            manifest,
-            "version",
-            buf,
-            size
-        );
-
+        extract_json_value(manifest, "version", buf, size);
         free(manifest);
     }
 
@@ -636,11 +613,7 @@ static int versionCPlus(char *buf, size_t size)
 static void usage(void)
 {
     char cplus_version[32];
-
-    versionCPlus(
-        cplus_version,
-        sizeof(cplus_version)
-    );
+    versionCPlus(cplus_version, sizeof(cplus_version));
 
     printf(
         "C+ compiler (v%s)\n\n"
@@ -656,6 +629,7 @@ static void usage(void)
         "  -o <file>     Output executable or file\n"
         "  -c            Compile to an object file\n"
         "  -C            Emit generated C only and exit\n"
+        "  --release     Compile in release mode (-O3 with Clang/GCC)\n"
         "  -D <macro>    Define preprocessor macro (forwarded to TCC)\n"
         "  -I <dir>      Add include directory (forwarded to TCC)\n"
         "  -shared       Create a shared library/dll (forwarded to TCC)\n"
@@ -806,7 +780,7 @@ static void print_stats(const CompilerStats *s)
     printf("  ------------------------------------\n");
     printf("  Frontend      : %8.3f ms (%5.1f%%)\n", frontend_time * 1000.0, (frontend_time / total_time) * 100.0);
     if (s->backend_time > 0.0) {
-        printf("  Backend (TCC) : %8.3f ms (%5.1f%%)\n", s->backend_time * 1000.0, (s->backend_time / total_time) * 100.0);
+        printf("  Backend       : %8.3f ms (%5.1f%%)\n", s->backend_time * 1000.0, (s->backend_time / total_time) * 100.0);
     }
     printf("  ------------------------------------\n");
     printf("  Total         : %8.3f ms\n\n", total_time * 1000.0);
@@ -870,6 +844,7 @@ int main(int argc, char **argv)
     char *allocated_output = NULL;
     bool emit_c = false, compile_only = false, keep = false;
     bool index = false, endopt = false, notify = false, stats = false;
+    bool release = false;
 
     Arguments backend, inputs, generated_files, command;
     args_init(&backend);
@@ -900,6 +875,10 @@ int main(int argc, char **argv)
         }
         if (!endopt && !strcmp(a, "--stats")) {
             stats = true;
+            continue;
+        }
+        if (!endopt && !strcmp(a, "--release")) {
+            release = true;
             continue;
         }
         if (!endopt && !strcmp(a, "-o")) {
@@ -941,7 +920,6 @@ int main(int argc, char **argv)
 
         if (!endopt && a[0] != '-') {
             size_t len = strlen(a);
-            /* Check if input file ends in .c */
             if (len >= 2 && strcmp(a + len - 2, ".c") == 0) {
                 args_push(&backend, a);
             } else {
@@ -959,7 +937,6 @@ int main(int argc, char **argv)
 
     cstats.input_files = inputs.count;
 
-    /* Output default deduction */
     if (!output) {
         if (!compile_only) {
             output = "out"
@@ -1075,7 +1052,20 @@ int main(int argc, char **argv)
 
     /* --- BACKEND BATCH EXECUTION --- */
     double backend_start = timer_now();
-    args_push(&command, "tcc");
+
+    if (release) {
+        char release_compiler[1024];
+        if (!get_release_compiler_path(release_compiler, sizeof(release_compiler))) {
+            fprintf(stderr, "c+: warning: could not resolve release compiler (clang/gcc), falling back to default.\n");
+            args_push(&command, "tcc");
+        } else {
+            args_push(&command, release_compiler);
+        }
+        args_push(&command, "-O3");
+    } else {
+        args_push(&command, "tcc");
+    }
+
     args_push(&command, "-w");
 
     for (size_t i = 0; i < backend.count; i++) {
