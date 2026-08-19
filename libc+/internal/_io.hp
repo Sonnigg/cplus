@@ -27,8 +27,40 @@ namespace HIDDEN__STD__IO
         bool        eof;
     };
 
+    // Exit control flag management for Ctrl + C tracking
+    inline bool *get_exit_flag()
+    {
+        static bool exit_flag = false;
+        return exit_flag;
+    }
+
+    // Platform-native exit helper
+    inline void system_exit(int code)
+    {
+#ifdef _WIN32
+        ExitProcess(static_cast<UINT>(code));
+#else
+        _exit(code);
+#endif
+    }
+
+    inline void check_exit()
+    {
+        if (HIDDEN__STD__IO::get_exit_flag())
+        {
+            HIDDEN__STD__IO::system_exit(-1);
+        }
+    }
+
+    inline void trigger_exit()
+    {
+        *HIDDEN__STD__IO::get_exit_flag() = true;
+        HIDDEN__STD__IO::system_exit(-1);
+    }
+
     inline bool flush_buffered_writer(int fd, BufferedStream *state)
     {
+        HIDDEN__STD__IO::check_exit();
         if (!state->tail) { // meaning state->tail == 0
             return true;
         }
@@ -75,6 +107,7 @@ namespace HIDDEN__STD__IO
 
     inline void flush_stdout_internal()
     {
+        HIDDEN__STD__IO::check_exit();
         HIDDEN__STD__IO::flush_buffered_writer(1, HIDDEN__STD__IO::get_stdout_state());
     }
 } // namespace HIDDEN__STD__IO
@@ -84,6 +117,7 @@ namespace std
 
     inline void write_stdout(const char *const _chpString, std::ptrsize_t _pszLength)
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString || _pszLength == 0) return;
 
         // Cache the state pointer once to avoid multiple unsequenced calls
@@ -111,6 +145,7 @@ namespace std
 
     inline void write_stderr(const char *const _chpString, std::ptrsize_t _pszLength)
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString || _pszLength == 0) return;
 
         std::ptrsize_t total_written = 0;
@@ -137,6 +172,7 @@ namespace std
 
     inline void get_stdin(char *const _chpBuffer, std::ptrsize_t _pszLength)
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpBuffer || _pszLength == 0) return;
 
         std::ptrsize_t total_read = 0;
@@ -177,7 +213,12 @@ namespace std
 
             for (std::size_t i = 0; i < to_copy; i++)
             {
-                _chpBuffer[total_read + i] = HIDDEN__STD__IO::get_stdin_state()->buffer[HIDDEN__STD__IO::get_stdin_state()->head++];
+                char ch = HIDDEN__STD__IO::get_stdin_state()->buffer[HIDDEN__STD__IO::get_stdin_state()->head++];
+                if (ch == 3)
+                {
+                    HIDDEN__STD__IO::trigger_exit();
+                }
+                _chpBuffer[total_read + i] = ch;
             }
 
             total_read += to_copy;
@@ -195,16 +236,18 @@ namespace std
      **/
     inline char getc()
     {
+        HIDDEN__STD__IO::check_exit();
         char ch = '\0';
         std::get_stdin(&ch, 1);
         return ch;
     } // char std::getc()
 
     /**
-     * Reads a string stream up to a maximum length safely with bounds checking
+     * Reads a string stream up to a maximum length safely with bounds checking, control sequences, and signal handling (Ctrl+C, Ctrl+D, Ctrl+Z)[cite: 11]
      **/
     inline void gets(char *const _chpBuffer, std::ptrsize_t _pszMaxLength)
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpBuffer || _pszMaxLength == 0)
             return;
 
@@ -215,10 +258,52 @@ namespace std
             char ch = std::getc();
             if (HIDDEN__STD__IO::get_stdin_state()->eof && ch == '\0')
                 break;
+
+            // Handle Ctrl + C (ASCII 3) - Abort program immediately
+            if (ch == 3)
+            {
+                HIDDEN__STD__IO::trigger_exit();
+            }
+
+            // Handle Ctrl + D (ASCII 4) or Ctrl + Z (ASCII 26) - EOF signals
+            if (ch == 4 || ch == 26)
+            {
+                HIDDEN__STD__IO::get_stdin_state()->eof = true;
+                break;
+            }
+
             if (ch == '\n')
                 break;
             if (ch == '\r')
                 continue;
+
+            // Handle Backspace (\b) and DEL (127) control characters
+            if (ch == '\b' || ch == 127)
+            {
+                if (length > 0)
+                {
+                    length--;
+                }
+                continue;
+            }
+
+            // Handle ANSI Escape sequences (e.g., arrow keys starting with ESC / 27)
+            if (ch == 27)
+            {
+                char next1 = std::getc();
+                if (next1 == '[')
+                {
+                    char next2 = std::getc();
+                    static_cast<void>(next2); // Consume sequence suffix safely
+                }
+                continue;
+            }
+
+            // Ignore other non-printable control codes except tab
+            if (ch < 32 && ch != '\t')
+            {
+                continue;
+            }
 
             _chpBuffer[length++] = ch;
         }
@@ -227,10 +312,11 @@ namespace std
     } // void std::gets(char *const _chpBuffer, std::ptrsize_t _pszMaxLength)
 
     /**
-     * Reads dynamically from stdin safely until a newline or EOF, returning a heap-allocated char *
+     * Reads dynamically from stdin safely until a newline or EOF, handling control sequences and signals, returning a heap-allocated char *[cite: 11]
      **/
     inline char *readDynamic()
     {
+        HIDDEN__STD__IO::check_exit();
         std::size_t capacity = 256;
         std::size_t length   = 0;
 
@@ -246,11 +332,53 @@ namespace std
             if (HIDDEN__STD__IO::get_stdin_state()->eof && ch == '\0')
                 break;
 
+            // Handle Ctrl + C (ASCII 3) - Abort program immediately
+            if (ch == 3)
+            {
+                std::freeMemory(buffer);
+                HIDDEN__STD__IO::trigger_exit();
+            }
+
+            // Handle Ctrl + D (ASCII 4) or Ctrl + Z (ASCII 26) - EOF signals
+            if (ch == 4 || ch == 26)
+            {
+                HIDDEN__STD__IO::get_stdin_state()->eof = true;
+                break;
+            }
+
             if (ch == '\r')
                 continue;
 
             if (ch == '\n')
                 break;
+
+            // Handle Backspace (\b) and DEL (127) control characters
+            if (ch == '\b' || ch == 127)
+            {
+                if (length > 0)
+                {
+                    length--;
+                }
+                continue;
+            }
+
+            // Handle ANSI Escape sequences (starting with ESC / 27)
+            if (ch == 27)
+            {
+                char next1 = std::getc();
+                if (next1 == '[')
+                {
+                    char next2 = std::getc();
+                    static_cast<void>(next2);
+                }
+                continue;
+            }
+
+            // Ignore other non-printable control codes except tab
+            if (ch < 32 && ch != '\t')
+            {
+                continue;
+            }
 
             if (length + 1 >= capacity)
             {
@@ -285,6 +413,7 @@ namespace std
         const char *const _chpString
     )
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString) return;
         std::write_stdout(_chpString, std::_chpLength(_chpString));
         HIDDEN__STD__IO::flush_stdout_internal();
@@ -297,6 +426,7 @@ namespace std
         const char _chChar
     )
     {
+        HIDDEN__STD__IO::check_exit();
         std::write_stdout(&_chChar, 1);
     } // inline void std::putc(const char _chChar)
 
@@ -307,6 +437,7 @@ namespace std
         const char *const _chpString
     )
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString) return;
         std::write_stdout(_chpString, std::_chpLength(_chpString));
         std::putc('\n');
@@ -320,6 +451,7 @@ namespace std
         const char *const _chpString
     )
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString) return;
         std::write_stderr(_chpString, std::_chpLength(_chpString));
     } // inline void std::errputs(const char *const _chpString)
@@ -331,6 +463,7 @@ namespace std
         const char _chChar
     )
     {
+        HIDDEN__STD__IO::check_exit();
         std::write_stderr(&_chChar, 1);
     } // inline void std::errputc(const char _chChar)
 
@@ -342,6 +475,7 @@ namespace std
         const char *const _chpString
     )
     {
+        HIDDEN__STD__IO::check_exit();
         if (!_chpString) return;
         std::write_stderr(_chpString, std::_chpLength(_chpString));
         std::errputc('\n');
@@ -349,6 +483,7 @@ namespace std
 
     inline char *promptRead(const char *const _chpPrompt)
     {
+        HIDDEN__STD__IO::check_exit();
         if (_chpPrompt)
             std::puts(_chpPrompt);
         return std::readDynamic();

@@ -16,7 +16,7 @@
 
 namespace std
 {
-    struct CryptoRandom
+    namespace CryptoRandom
     {
         /*
          * Fills the provided buffer with cryptographically secure random bytes
