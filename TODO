@@ -1,7 +1,8 @@
 !!!THE HIGHER THE PRIORITY THE MORE IMPORTANT IT IS!!!
 
-
-Priority 2/10 : Making libc+
+[[
+    Priority 2/10 : Making libc+
+]] -> DONE FOR NOW
 
 
 [[
@@ -22,27 +23,27 @@ Priority 4/10 : Adding better error reporting and diagnostics
 
 
 [[
-Priority 6/10 : Add 'defer' blocks
+    Priority 6/10 : Add 'defer' blocks
 ]] -> DONE
 
 
 [[
-Priority 7/10 : Add a better switch that always compiles down to an if-chain unless break is used in any case
-                ^^ (compatibility reasons)
-    |> then it falls through as a normal C-switch
-    |> this also includes for cases to handle things such as:
-        case 0 => 10: ...
-    |> '=>'  is the "inclusive-exclusive" range-operator (..  in Rust)
-    |> '==>' is the "inclusive-inclusive" range-operator (..= in Rust)
-    |> things such as:
-        switch (x)
-        {
-            case isspace(_):
-                foo();
-            default:
-                bar();
-        }
-    |> where _ is treated as the implicit argument, is replaced by the actual switch argument during codegen
+    Priority 7/10 : Add a better switch that always compiles down to an if-chain unless break is used in any case
+                    ^^ (compatibility reasons)
+        |> then it falls through as a normal C-switch
+        |> this also includes for cases to handle things such as:
+            case 0 => 10: ...
+        |> '=>'  is the "inclusive-exclusive" range-operator (..  in Rust)
+        |> '==>' is the "inclusive-inclusive" range-operator (..= in Rust)
+        |> things such as:
+            switch (x)
+            {
+                case isspace(_):
+                    foo();
+                default:
+                    bar();
+            }
+        |> where _ is treated as the implicit argument, is replaced by the actual switch argument during codegen
 ]] -> DONE
 
 
@@ -75,9 +76,9 @@ Priority 5/10 : Adding small generic support in C+
 
 
 [[
-Priority 10/10: Splitting the current one-file monstrosity (cplus.c) into multiple smaller more maintable files
-    |> this means headers (bootstrap/include) and C files (bootstrap/src)
-    |> the main file is named main.c or main.cplus.c or main-cplus.c, preferably the latter
+    Priority 10/10: Splitting the current one-file monstrosity (cplus.c) into multiple smaller more maintable files
+        |> this means headers (bootstrap/include) and C files (bootstrap/src)
+        |> the main file is named main.c or main.cplus.c or main-cplus.c, preferably the latter
 ]] -> DONE
 
 
@@ -85,11 +86,12 @@ Priority 8/10 : Adding constexpr support for functions and conditionals as-well 
 
 
 [[
-Priority 5/10 : Adding compiler intrinsics for architecture and OS (intrinsic was made for pointer size instead...)
-    |> Also adding std::platform() to libc+.hp and making it return a struct "Platform" that has methods .os() and .arch() for the specifics
-    |> std::platform().os() will return an std::OS::* instead of a string
-    |> std::platform().arch() will return an std::Arch::* instead of a string
+    Priority 5/10 : Adding compiler intrinsics for architecture and OS (intrinsic was made for pointer size instead...)
+        |> Also adding std::platform() to libc+.hp and making it return a struct "Platform" that has methods .os() and .arch() for the specifics
+        |> std::platform().os() will return an std::OS::* instead of a string
+        |> std::platform().arch() will return an std::Arch::* instead of a string
 ]] -> DONE
+
 
 Priority 6/10 : Adding a variadic system that is type-safe
     |> planned syntax would be the following:
@@ -102,18 +104,24 @@ Priority 6/10 : Adding a variadic system that is type-safe
             }
         }
     |> expanded at compile-time and the resulting C code will be specialized (monomorphization for variadics)
-        ^^ (this can lead to code bloat)
+        ^^ (this can lead to code bloat) (note from future me [2026-08-19]; that doesn't fucking matter anymore with the current transpilation model)
 
-Priority 9/10: Language stabilization
-    |> Freeze grammar
-    |> Freeze mangling rules
-    |> Freeze ABI
-    |> Add regression tests
-    |> Bootstrap compiler using released C+
 
-Priority 8/10 : Documentation
-    |> Language reference
-    |> Compiler internals
-    |> libc+ reference
-    |> Style guide
-    |> Migration guide
+[[
+    Priority 9/10: Language stabilization
+        |> Freeze grammar
+        |> Freeze mangling rules
+        |> Freeze ABI
+        |> Add regression tests
+        |> Bootstrap compiler using released C+
+]] -> DONE (somewhat at least, bootstrapping still has to be made)
+
+
+[[
+    Priority 8/10 : Documentation
+        |> Language reference
+        |> Compiler internals
+        |> libc+ reference
+        |> Style guide
+        |> Migration guide
+]] -> DONE (somewhat, actually- almost none)
