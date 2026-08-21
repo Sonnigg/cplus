@@ -1,6 +1,6 @@
 // _asyncin.hp
 
-// for non-blocking input with key-hold repeating and instant key-switching interrupts
+// for non-blocking input using native Win32 console input records
 
 #ifndef __ASYNCIN_HP
 #define __ASYNCIN_HP
@@ -24,10 +24,18 @@ namespace HIDDEN__ASYNCIN
         return &initialized;
     }
 
-    inline char *get_last_char_ptr()
+    struct KeyQueue
     {
-        static char last_char = '\0';
-        return &last_char;
+        char buffer[2];
+        int count;
+        int head;
+        int tail;
+    };
+
+    inline KeyQueue *get_key_queue()
+    {
+        static KeyQueue kq = { { '\0', '\0' }, 0, 0, 0 };
+        return &kq;
     }
 
 #ifndef _WIN32
@@ -77,7 +85,8 @@ namespace std
         if (GetConsoleMode(hStdin, &mode))
         {
             *HIDDEN__ASYNCIN::get_original_console_mode() = mode;
-            mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+            // Keep ENABLE_PROCESSED_INPUT so Ctrl+C works properly as an interrupt
+            mode = (mode & ~ENABLE_LINE_INPUT & ~ENABLE_ECHO_INPUT) | ENABLE_PROCESSED_INPUT;
             SetConsoleMode(hStdin, mode);
             *HIDDEN__ASYNCIN::get_initialized_flag() = true;
         }
@@ -106,16 +115,14 @@ namespace std
     inline bool hasInputAsync()
     {
         std::init_async_input();
+        
+        HIDDEN__ASYNCIN::KeyQueue *kq = HIDDEN__ASYNCIN::get_key_queue();
+        if (kq->count > 0) return true;
 
 #ifdef _WIN32
         HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
         DWORD events = 0;
         if (GetNumberOfConsoleInputEvents(hStdin, &events) && events > 0)
-        {
-            return true;
-        }
-        DWORD avail = 0;
-        if (PeekNamedPipe(hStdin, nullptr, 0, nullptr, &avail, nullptr) && avail > 0)
         {
             return true;
         }
@@ -135,60 +142,78 @@ namespace std
 #endif
     }
 
-    /**
-     * Reads async input. If a key is held, it continuously yields characters.
-     * If you switch keys (e.g., press 'W' while holding 'S'), it interrupts,
-     * processes the new key, and flushes the stale buffer of the previous key.
-     */
     inline bool getcAsync(char *const _chChar)
     {
         if (!_chChar) return false;
         std::init_async_input();
 
-        char c = '\0';
-        bool received = false;
+        HIDDEN__ASYNCIN::KeyQueue *kq = HIDDEN__ASYNCIN::get_key_queue();
 
 #ifdef _WIN32
         HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-        DWORD read_bytes = 0;
-        if (ReadFile(hStdin, &c, 1, &read_bytes, nullptr) && read_bytes > 0)
-        {
-            received = true;
-        }
-#else
-        std::ssize_t read_bytes = read(STDIN_FILENO, &c, 1);
-        if (read_bytes > 0)
-        {
-            received = true;
-        }
-#endif
+        INPUT_RECORD inputRecords[128];
+        DWORD numEventsRead = 0;
+        DWORD numEvents = 0;
 
-        if (received)
+        if (GetNumberOfConsoleInputEvents(hStdin, &numEvents) && numEvents > 0)
         {
-            char *last_char = HIDDEN__ASYNCIN::get_last_char_ptr();
-
-            // If a different key is pressed while holding the previous one,
-            // flush out remaining repeated bytes of the old key to switch immediately.
-            if (*last_char != '\0' && *last_char != c)
+            if (PeekConsoleInput(hStdin, inputRecords, 128, &numEventsRead) && numEventsRead > 0)
             {
-#ifdef _WIN32
-                // Flush excess console buffer input on Windows
-                FlushConsoleInputBuffer(hStdin);
-#else
-                // Flush excess input queue on POSIX
-                tcflush(STDIN_FILENO, TCIFLUSH);
-#endif
-            }
+                // Actually consume them
+                ReadConsoleInput(hStdin, inputRecords, numEventsRead, &numEventsRead);
 
-            *last_char = c;
-            *_chChar = c;
-            return true;
+                for (DWORD i = 0; i < numEventsRead; i++)
+                {
+                    if (inputRecords[i].EventType == KEY_EVENT && inputRecords[i].Event.KeyEvent.bKeyDown)
+                    {
+                        char asciiChar = inputRecords[i].Event.KeyEvent.uChar.AsciiChar;
+                        if (asciiChar != '\0')
+                        {
+                            if (kq->count < 2)
+                            {
+                                kq->buffer[kq->tail] = asciiChar;
+                                kq->tail = (kq->tail + 1) % 2;
+                                kq->count++;
+                            }
+                            else
+                            {
+                                kq->buffer[kq->tail] = asciiChar;
+                                kq->tail = (kq->tail + 1) % 2;
+                                kq->head = (kq->head + 1) % 2;
+                            }
+                        }
+                    }
+                }
+            }
         }
-        else
+#else
+        char temp_c = '\0';
+        std::ssize_t read_bytes = 0;
+
+        while ((read_bytes = read(STDIN_FILENO, &temp_c, 1)) > 0)
         {
-            // If no input was available this cycle, the key has been let go.
-            // Reset the tracker so a fresh press counts properly.
-            *(HIDDEN__ASYNCIN::get_last_char_ptr()) = '\0';
+            if (kq->count < 2)
+            {
+                kq->buffer[kq->tail] = temp_c;
+                kq->tail = (kq->tail + 1) % 2;
+                kq->count++;
+            }
+            else
+            {
+                kq->buffer[kq->tail] = temp_c;
+                kq->tail = (kq->tail + 1) % 2;
+                kq->head = (kq->head + 1) % 2;
+            }
+        }
+        tcflush(STDIN_FILENO, TCIFLUSH);
+#endif
+
+        if (kq->count > 0)
+        {
+            *_chChar = kq->buffer[kq->head];
+            kq->head = (kq->head + 1) % 2;
+            kq->count--;
+            return true;
         }
 
         return false;
