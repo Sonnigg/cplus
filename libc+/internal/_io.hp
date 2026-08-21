@@ -1,6 +1,6 @@
 // _io.hp
 
-// IO stub for non-String behaviour functions, also implemented fully in io.hp
+// IO stub for non-String behaviour functions
 
 #ifndef __IO_HP
 #define __IO_HP
