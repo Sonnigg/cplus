@@ -489,6 +489,26 @@ namespace std
         return std::readDynamic();
     }
 
+    enum Channel
+    {
+        In,
+        Out,
+        Err,
+    }
+
+    inline void flush(std::Channel _chnChannel)
+    {
+        switch (_chnChannel)
+        {
+            case std::Channel::In || std::Channel::Err:
+                return;
+            case std::Channel::Out:
+                std::flush_stdout_internal();
+            default:
+                return;
+        }
+    }
+
 } // namespace std
 
 #endif // #ifndef __IO_HP
