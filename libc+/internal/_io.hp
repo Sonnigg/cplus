@@ -31,8 +31,7 @@ namespace HIDDEN__STD__IO
     inline bool *get_exit_flag()
     {
         static bool exit_flag = false;
-        return exit_flag; // can't be &exit_flag due to any program that relies on IO crashing due to it
-        // probably some temporary address or static address bug?
+        return &exit_flag;
     }
 
     // Platform-native exit helper
@@ -47,7 +46,7 @@ namespace HIDDEN__STD__IO
 
     inline void check_exit()
     {
-        if (HIDDEN__STD__IO::get_exit_flag())
+        if (*HIDDEN__STD__IO::get_exit_flag())
         {
             HIDDEN__STD__IO::system_exit(-1);
         }
