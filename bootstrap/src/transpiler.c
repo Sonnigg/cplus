@@ -334,8 +334,11 @@ char *preprocess_source(const char *path, const char *src, int depth)
 
                                 if (cached)
                                 {
-                                    buffer_puts(&out, cached);
-                                    buffer_putc(&out, '\n');
+                                    /* 
+                                     * Already seen/included! 
+                                     * Do not re-inline and remove the #include line 
+                                     * by not writing anything to `out`.
+                                     */
                                 }
                                 else
                                 {
@@ -352,9 +355,7 @@ char *preprocess_source(const char *path, const char *src, int depth)
 
                                         /*
                                          * Store the preprocessed source.
-                                         *
-                                         * The cache takes ownership of
-                                         * `child`, so don't free it here.
+                                         * The cache takes ownership of `child`.
                                          */
                                         include_cache_put(
                                             resolved,
