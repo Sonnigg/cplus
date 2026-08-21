@@ -31,7 +31,7 @@ namespace HIDDEN__STD__IO
     inline bool *get_exit_flag()
     {
         static bool exit_flag = false;
-        return &exit_flag;
+        return exit_flag;
     }
 
     // Platform-native exit helper
