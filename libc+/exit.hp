@@ -1,0 +1,32 @@
+// exit.hp
+
+#ifndef _EXIT_HP
+#define _EXIT_HP
+
+#include <types>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+namespace std
+{
+    /**
+     * Terminate the program immediately at the OS level using native headers 
+     * without standard library cleanup/libc dependencies.
+     */
+    inline void exit(std::int32_t status)
+    {
+#ifdef _WIN32
+        ExitProcess(static_cast<UINT>(status));
+#else
+        _exit(status);
+#endif
+        // Ensure compiler knows this path never returns
+        while (true) {}
+    }
+}
+
+#endif // _EXIT_HP
