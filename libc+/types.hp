@@ -23,6 +23,11 @@ namespace std
     typedef uint16_t bool2_t;
     typedef uint8_t  bool1_t;
 
+    bool isNull(void *const ptr)
+    {
+        return ptr == nullptr;
+    }
+
     /*
         Pointer-sized types
     */

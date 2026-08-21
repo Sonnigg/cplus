@@ -9,13 +9,17 @@ namespace std
 {
     std::size_t stringLength(const char *const _chpString)
     {
+        if (!_chpString)
+            return 0;
         std::size_t total = 0;
-        for (;_chpString[total];total++){}
+        for (;_chpString && _chpString[total];total++){}
         return total;
     } // std::size_t std::stringLength(const char *const _chpString)
 
     std::size_t stringLengthWithNull(const char *const _chpString)
     {
+        if (!_chpString)
+            return 0; // stringLengthWithNull ONLY returns 0 on _chpString == nullptr
         std::size_t total = 0;
         for (;_chpString[total];total++){}
         return total+1;
@@ -23,6 +27,8 @@ namespace std
 
     void copyString(char *const _chpDest, const char *const _chpSource)
     {
+        if (!_chpDest || !_chpSource)
+            return;
         std::size_t idx = 0;
         for (;_chpSource[idx]; idx++)
         {
@@ -39,12 +45,14 @@ namespace std
 
     bool isOnlySpace(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++) // _chpString[i] auto-stops on the null terminator, so no need for a second length pass or anything
         {
             if (!std::isSpace(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlySpace(const char *const _chpString)
 
     bool isDigit(const char _chChar)
@@ -60,12 +68,14 @@ namespace std
 
     bool isOnlyDigit(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isDigit(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyDigit(const char *const _chpString)
 
     bool isBinary(const char _chChar)
@@ -81,12 +91,14 @@ namespace std
 
     bool isOnlyBinary(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isBinary(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyBinary(const char *const _chpString)
 
     bool isHex(const char _chChar)
@@ -102,12 +114,14 @@ namespace std
 
     bool isOnlyHex(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isHex(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyHex(const char *const _chpString)
 
     bool isAlpha(const char _chChar)
@@ -123,12 +137,14 @@ namespace std
 
     bool isOnlyAlpha(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isAlpha(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyAlpha(const char *const _chpString)
 
     bool isAlnum(const char _chChar)
@@ -138,12 +154,14 @@ namespace std
 
     bool isOnlyAlnum(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isAlnum(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyAlnum(const char *const _chpString)
 
     bool isUpper(const char _chChar)
@@ -159,12 +177,14 @@ namespace std
 
     bool isOnlyUpper(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isUpper(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyUpper(const char *const _chpString)
 
     bool isLower(const char _chChar)
@@ -180,12 +200,14 @@ namespace std
 
     bool isOnlyLower(const char *const _chpString)
     {
+        if (!_chpString || _chpString[0] == '\0')
+            return false;
         for (std::size_t i = 0; _chpString[i]; i++)
         {
             if (!std::isLower(_chpString[i]))
                 return false;
         }
-        return !_chpString || _chpString[0] == '\0' ? false : true;
+        return true;
     } // bool std::isOnlyLower(const char *const _chpString)
 
     bool isPunctuation(const char _chChar)
