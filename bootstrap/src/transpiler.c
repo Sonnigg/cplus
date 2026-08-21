@@ -1884,10 +1884,18 @@ static void emit_one(Transpiler *t, NamespaceStack *ns, size_t *pp, size_t end)
         q = read_qualified(t, p, end, &used);
         qualified = q && strstr(q, "::") != NULL;
         if (qualified) {
-            s = resolve_name(&t->symbols, ns, q, SYM_TYPE | SYM_ENUM | SYM_ENUM_MEMBER | SYM_FUNCTION | SYM_METHOD | SYM_VARIABLE);
+            s = resolve_name(&t->symbols, ns, q, SYM_TYPE | SYM_ENUM | SYM_ENUM_MEMBER | SYM_FUNCTION | SYM_METHOD |SYM_VARIABLE);
             if (!s) {
+                Buffer err;
+                buffer_init(&err);
+                buffer_puts(&err, "unknown qualified name '");
+                buffer_puts(&err, q);
+                buffer_puts(&err, "'");
+                
                 free(q);
-                die_at(x, "unknown qualified name");
+                die_at(x, err.data); // Note: err.data is heap allocated via Buffer, 
+                                     // but since die_at exits the program immediately, 
+                                     // leaking it here is typically fine.
             }
             emit_ws(&t->output, x);
             buffer_puts(&t->output, s->mangled_name);

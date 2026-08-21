@@ -4,6 +4,7 @@
 #define _CRANDOM_HP
 
 #include <types>
+#include <limits>
 #include <memory>
 
 #ifdef _WIN32
@@ -123,7 +124,7 @@ namespace std
 
             return min + (value % range);
         }
-    }; // struct CryptoRandom
+    }; // namespace CryptoRandom
 } // namespace std
 
 #endif // _CRANDOM_HP
