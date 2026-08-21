@@ -243,7 +243,7 @@ namespace std
     } // char std::getc()
 
     /**
-     * Reads a string stream up to a maximum length safely with bounds checking, control sequences, and signal handling (Ctrl+C, Ctrl+D, Ctrl+Z)[cite: 11]
+     * Reads a string stream up to a maximum length safely with bounds checking, control sequences, and signal handling (Ctrl+C, Ctrl+D, Ctrl+Z)
      **/
     inline void gets(char *const _chpBuffer, std::ptrsize_t _pszMaxLength)
     {
@@ -312,7 +312,7 @@ namespace std
     } // void std::gets(char *const _chpBuffer, std::ptrsize_t _pszMaxLength)
 
     /**
-     * Reads dynamically from stdin safely until a newline or EOF, handling control sequences and signals, returning a heap-allocated char *[cite: 11]
+     * Reads dynamically from stdin safely until a newline or EOF, handling control sequences and signals, returning a heap-allocated char *
      **/
     inline char *readDynamic()
     {
