@@ -31,7 +31,8 @@ namespace HIDDEN__STD__IO
     inline bool *get_exit_flag()
     {
         static bool exit_flag = false;
-        return exit_flag;
+        return exit_flag; // can't be &exit_flag due to any program that relies on IO crashing due to it
+        // probably some temporary address or static address bug?
     }
 
     // Platform-native exit helper
