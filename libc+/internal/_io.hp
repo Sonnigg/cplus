@@ -503,7 +503,7 @@ namespace std
             case std::Channel::In || std::Channel::Err:
                 return;
             case std::Channel::Out:
-                std::flush_stdout_internal();
+                HIDDEN__STD__IO::flush_stdout_internal();
             default:
                 return;
         }

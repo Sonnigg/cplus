@@ -5,6 +5,8 @@
 
 #include <types>
 #include <internal/_time>
+#include <string>
+#include <convert>
 
 namespace std
 {
@@ -81,6 +83,32 @@ namespace std
 
             return self->seconds * 1000000000
                 + self->nanoseconds;
+        }
+
+        std::String toString(const Time *const self)
+        {
+            if (!self)
+            {
+                std::String TMP = std::String::fromChars("Time { null }");
+                return TMP;
+            }
+
+            std::String s = std::String::new();
+            s.appendChars("Time { Seconds: ");
+
+            std::String str1 = std::intToString(self->seconds);
+            s.appendString(&str1);
+            str1.destroy();
+
+            s.appendChars(", Nanoseconds: ");
+
+            std::String str2 = std::intToString(self->nanoseconds);
+            s.appendString(&str2);
+            str2.destroy();
+
+            s.appendChars(" }");
+
+            return s;
         }
     } // struct Time
 

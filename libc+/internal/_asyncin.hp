@@ -1,0 +1,199 @@
+// _asyncin.hp
+
+// for non-blocking input with key-hold repeating and instant key-switching interrupts
+
+#ifndef __ASYNCIN_HP
+#define __ASYNCIN_HP
+
+#include <types>
+#include <internal/_utilities>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#endif
+
+namespace HIDDEN__ASYNCIN
+{
+    inline bool *get_initialized_flag()
+    {
+        static bool initialized = false;
+        return &initialized;
+    }
+
+    inline char *get_last_char_ptr()
+    {
+        static char last_char = '\0';
+        return &last_char;
+    }
+
+#ifndef _WIN32
+    inline struct termios *get_original_termios()
+    {
+        static struct termios orig_termios;
+        return &orig_termios;
+    }
+
+    inline void restore_terminal()
+    {
+        if (*HIDDEN__ASYNCIN::get_initialized_flag())
+        {
+            tcsetattr(STDIN_FILENO, TCSAFLUSH, HIDDEN__ASYNCIN::get_original_termios());
+            *HIDDEN__ASYNCIN::get_initialized_flag() = false;
+        }
+    }
+#else
+    inline DWORD *get_original_console_mode()
+    {
+        static DWORD orig_mode = 0;
+        return &orig_mode;
+    }
+
+    inline void restore_terminal()
+    {
+        if (*HIDDEN__ASYNCIN::get_initialized_flag())
+        {
+            HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+            SetConsoleMode(hStdin, *HIDDEN__ASYNCIN::get_original_console_mode());
+            *HIDDEN__ASYNCIN::get_initialized_flag() = false;
+        }
+    }
+#endif
+} // namespace HIDDEN__ASYNCIN
+
+namespace std
+{
+    inline void init_async_input()
+    {
+        if (*HIDDEN__ASYNCIN::get_initialized_flag())
+            return;
+
+#ifdef _WIN32
+        HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+        DWORD mode = 0;
+        if (GetConsoleMode(hStdin, &mode))
+        {
+            *HIDDEN__ASYNCIN::get_original_console_mode() = mode;
+            mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+            SetConsoleMode(hStdin, mode);
+            *HIDDEN__ASYNCIN::get_initialized_flag() = true;
+        }
+#else
+        struct termios term;
+        if (tcgetattr(STDIN_FILENO, &term) == 0)
+        {
+            *HIDDEN__ASYNCIN::get_original_termios() = term;
+            term.c_lflag &= ~(ICANON | ECHO);
+            term.c_cc[VMIN] = 0;
+            term.c_cc[VTIME] = 0;
+
+            if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &term) == 0)
+            {
+                *HIDDEN__ASYNCIN::get_initialized_flag() = true;
+            }
+        }
+#endif
+    }
+
+    inline void cleanup_async_input()
+    {
+        HIDDEN__ASYNCIN::restore_terminal();
+    }
+
+    inline bool hasInputAsync()
+    {
+        std::init_async_input();
+
+#ifdef _WIN32
+        HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+        DWORD events = 0;
+        if (GetNumberOfConsoleInputEvents(hStdin, &events) && events > 0)
+        {
+            return true;
+        }
+        DWORD avail = 0;
+        if (PeekNamedPipe(hStdin, nullptr, 0, nullptr, &avail, nullptr) && avail > 0)
+        {
+            return true;
+        }
+        return false;
+#else
+        fd_set readfds;
+        struct timeval tv;
+        
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+        
+        int retval = select(STDIN_FILENO + 1, &readfds, nullptr, nullptr, &tv);
+        return (retval > 0 && FD_ISSET(STDIN_FILENO, &readfds));
+#endif
+    }
+
+    /**
+     * Reads async input. If a key is held, it continuously yields characters.
+     * If you switch keys (e.g., press 'W' while holding 'S'), it interrupts,
+     * processes the new key, and flushes the stale buffer of the previous key.
+     */
+    inline bool getcAsync(char *const _chChar)
+    {
+        if (!_chChar) return false;
+        std::init_async_input();
+
+        char c = '\0';
+        bool received = false;
+
+#ifdef _WIN32
+        HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+        DWORD read_bytes = 0;
+        if (ReadFile(hStdin, &c, 1, &read_bytes, nullptr) && read_bytes > 0)
+        {
+            received = true;
+        }
+#else
+        std::ssize_t read_bytes = read(STDIN_FILENO, &c, 1);
+        if (read_bytes > 0)
+        {
+            received = true;
+        }
+#endif
+
+        if (received)
+        {
+            char *last_char = HIDDEN__ASYNCIN::get_last_char_ptr();
+
+            // If a different key is pressed while holding the previous one,
+            // flush out remaining repeated bytes of the old key to switch immediately.
+            if (*last_char != '\0' && *last_char != c)
+            {
+#ifdef _WIN32
+                // Flush excess console buffer input on Windows
+                FlushConsoleInputBuffer(hStdin);
+#else
+                // Flush excess input queue on POSIX
+                tcflush(STDIN_FILENO, TCIFLUSH);
+#endif
+            }
+
+            *last_char = c;
+            *_chChar = c;
+            return true;
+        }
+        else
+        {
+            // If no input was available this cycle, the key has been let go.
+            // Reset the tracker so a fresh press counts properly.
+            *(HIDDEN__ASYNCIN::get_last_char_ptr()) = '\0';
+        }
+
+        return false;
+    }
+
+} // namespace std
+
+#endif // #ifndef __ASYNCIN_HP
