@@ -6,7 +6,7 @@
 #define __IO_HP
 
 #include <types>
-#include <internal/_utilities>
+#include <internal/_bscstrlen>
 #include <memory>
 
 #ifdef _WIN32

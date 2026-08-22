@@ -1,4 +1,3 @@
-#include <internal/_utilities.hp>
 #include <internal/_asyncin.hp>
 #include <internal/_io.hp>
 #include <internal/_time.hp>

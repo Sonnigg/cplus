@@ -5,7 +5,6 @@
 #include <memory>
 #include <string>
 #include <io>
-#include <internal/_utilities>
 // For stringLength
 #include <chars>
 

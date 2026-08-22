@@ -6,7 +6,6 @@
 #define __ASYNCIN_HP
 
 #include <types>
-#include <internal/_utilities>
 
 #ifdef _WIN32
 #include <windows.h>
