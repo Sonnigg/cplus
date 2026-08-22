@@ -74,7 +74,7 @@ namespace HIDDEN__ASYNCIN
 
 namespace std
 {
-    inline void init_async_input()
+    inline void initAsyncInput()
     {
         if (*HIDDEN__ASYNCIN::get_initialized_flag())
             return;
@@ -107,14 +107,14 @@ namespace std
 #endif
     }
 
-    inline void cleanup_async_input()
+    inline void cleanupAsyncInput()
     {
         HIDDEN__ASYNCIN::restore_terminal();
     }
 
     inline bool hasInputAsync()
     {
-        std::init_async_input();
+        std::initAsyncInput();
         
         HIDDEN__ASYNCIN::KeyQueue *kq = HIDDEN__ASYNCIN::get_key_queue();
         if (kq->count > 0) return true;
@@ -145,7 +145,7 @@ namespace std
     inline bool getcAsync(char *const _chChar)
     {
         if (!_chChar) return false;
-        std::init_async_input();
+        std::initAsyncInput();
 
         HIDDEN__ASYNCIN::KeyQueue *kq = HIDDEN__ASYNCIN::get_key_queue();
 
