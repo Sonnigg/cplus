@@ -1,6 +1,7 @@
-#include <internal/_asyncin.hp>
-#include <internal/_io.hp>
-#include <internal/_time.hp>
+#include <internal/_bscstrlen>
+#include <internal/_asyncin>
+#include <internal/_io>
+#include <internal/_time>
 
 #include <chars>
 #include <convert>
