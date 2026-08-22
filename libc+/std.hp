@@ -13,6 +13,6 @@
 #include <types>
 #include <fs>
 #include <random>
-#include <crandom>
+#include <cryptrand>
 #include <time>
 #include <exit>
